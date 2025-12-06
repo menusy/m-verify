@@ -3,59 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mockup – ułożenie 1 i 2</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-    }
-
-    body {
-      min-height: 100vh;
-      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: #000;
-      color: #f5f5f5;
-      overflow-y: auto;
-    }
-
-    main {
-      width: 100%;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      border-radius: 0;
-      box-shadow: none;
-      border: none;
-      background: #000;
-    }
-
-    .panel {
-      min-height: 100vh;
-      background-size: cover;
-      background-repeat: no-repeat;
-      background-position: center top;
-    }
-
-    .panel--top {
-      background-image: url("./assets/images/raw/1.png");
-    }
-
-    .panel--bottom {
-      background-image: url("./assets/images/raw/2.png");
-    }
-
-    @media (max-width: 768px) {
-      .panel {
-        min-height: 80vh;
-      }
-    }
-  </style>
+  <title>Gov - Frontend</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <main aria-label="Dwuczęściowy podgląd makiety">
-    <section class="panel panel--top" aria-label="Górna część (plik 1)"></section>
-    <section class="panel panel--bottom" aria-label="Dolna część (plik 2)"></section>
+  <main>
+    <!-- Przycisk na samej górze - sticky -->
+    <div class="top-pairing-button-container">
+      <button id="topPairingButton" class="top-pairing-button">
+        <span class="button-icon">📱</span>
+        <span class="button-text">Generuj kod QR i PIN</span>
+      </button>
+    </div>
+
+    <header>
+      <h1>Gov Application</h1>
+      <p>Frontend połączony z API</p>
+      <button id="ctaButton" class="cta-button">
+        <span class="button-icon">📱</span>
+        Wyświetl kod QR i PIN do parowania
+      </button>
+    </header>
+
+    <section class="panel panel--top" aria-label="Górna część">
+      <div class="panel-content">
+        <h2>Panel Górny</h2>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="container">
+        <h2>Zarządzanie danymi</h2>
+        
+        <div class="form-section">
+          <h3>Dodaj nowy element</h3>
+          <form id="itemForm">
+            <input type="text" id="itemName" placeholder="Nazwa" required>
+            <input type="text" id="itemDescription" placeholder="Opis">
+            <button type="submit">Dodaj</button>
+          </form>
+        </div>
+
+        <div class="items-section">
+          <h3>Lista elementów</h3>
+          <div id="itemsList" class="items-list">
+            <p class="loading">Ładowanie...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel panel--bottom" aria-label="Dolna część">
+      <div class="panel-content">
+        <h2>Panel Dolny</h2>
+      </div>
+    </section>
   </main>
+
+  <!-- Modal z QR code -->
+  <div id="qrModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Połącz z aplikacją mobilną</h2>
+      <p class="qr-instruction">Wyświetl kod QR lub 6-cyfrowy kod PIN i użyj go w aplikacji mobilnej. Kod jest ważny przez 5 minut.</p>
+      
+      <!-- 6-cyfrowy kod PIN -->
+      <div id="pinContainer" class="pin-container">
+        <div class="pin-label">Kod PIN:</div>
+        <div id="pinCode" class="pin-code">------</div>
+        <button id="copyPinBtn" class="copy-pin-btn" style="display: none;">Kopiuj kod</button>
+      </div>
+      
+      <!-- QR Code -->
+      <div class="qr-divider">
+        <span>lub</span>
+      </div>
+      <div id="qrContainer" class="qr-container">
+        <div class="qr-loading">Generowanie kodu QR...</div>
+      </div>
+      
+      <div id="qrStatus" class="qr-status"></div>
+      <div id="qrTimer" class="qr-timer"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>
 
