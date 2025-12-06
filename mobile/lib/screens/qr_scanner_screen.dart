@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import '../services/api_service.dart';
-import '../widgets/result_dialog.dart';
+import 'result_screen.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -50,80 +50,126 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   Future<void> _processToken(String token) async {
     try {
-      // Zatrzymaj skanowanie
-      await controller?.pauseCamera();
-      
       // Wyślij potwierdzenie parowania
       final result = await ApiService.confirmPairing(
         token: token,
         deviceName: 'Mobile App',
       );
       
-      if (mounted) {
-        if (result['success'] == true) {
-          await controller?.stopCamera();
-          // Ukryj ekran "Przetwarzanie..." przed pokazaniem dialogu sukcesu
-          setState(() {
-            isProcessing = false;
-          });
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => ResultDialog(
-              success: true,
-              message: 'Parowanie zakończone pomyślnie!',
-              onClose: () {
-                Navigator.of(context).pop(); // Zamknij dialog
-                Navigator.of(context).pop(); // Wróć do HomeScreen
-              },
+      if (!mounted) {
+        return;
+      }
+
+      // Sprawdź sukces - poprawiona logika
+      final successValue = result['success'];
+      print('QRScanner - successValue: $successValue, type: ${successValue?.runtimeType}');
+      print('QRScanner - full result: $result');
+      
+      // Sprawdź czy sukces (obsługuje różne formaty: true, "true", 1, itp.)
+      // Jeśli brak klucza 'success', sprawdź status code lub inne wskaźniki
+      bool isSuccess = false;
+      if (successValue != null) {
+        isSuccess = successValue == true || 
+                   successValue == 1 || 
+                   (successValue is String && successValue.toLowerCase() == 'true') ||
+                   (successValue is bool && successValue);
+      } else {
+        // Jeśli brak 'success', sprawdź czy jest message o sukcesie lub brak błędu
+        final message = result['message']?.toString().toLowerCase() ?? '';
+        isSuccess = message.contains('success') || 
+                   message.contains('confirmed') ||
+                   message.contains('pomyślnie');
+      }
+
+      print('QRScanner - isSuccess: $isSuccess');
+
+      // Zatrzymaj kamerę przed nawigacją (w try-catch, żeby nie blokować nawigacji)
+      try {
+        await controller?.stopCamera();
+        print('QRScanner - Camera stopped');
+      } catch (e) {
+        print('QRScanner - Error stopping camera: $e');
+      }
+
+      if (!mounted) {
+        print('QRScanner - Widget not mounted after processing, cannot navigate');
+        return;
+      }
+
+      if (isSuccess) {
+        // SUKCES - natychmiast przejdź do pełnoekranowego ekranu sukcesu
+        print('QRScanner - Entering success block');
+        final message = result['message'] ?? 'Parowanie zakończone pomyślnie!';
+        print('QRScanner - Navigating to success screen with message: $message');
+        print('QRScanner - Context: $context');
+        print('QRScanner - Navigator: ${Navigator.of(context)}');
+        
+        // Bezpośrednia nawigacja - użyj pushAndRemoveUntil, aby upewnić się, że poprzednie ekrany są usunięte
+        try {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => ResultScreen(
+                success: true,
+                message: message,
+              ),
             ),
+            (route) => route.isFirst, // Zostaw tylko pierwszy ekran (HomeScreen)
           );
-        } else {
-          await controller?.resumeCamera();
-          setState(() {
-            isProcessing = false;
-          });
-          if (mounted) {
-            final errorMessage = result['message'] ?? 'Błąd podczas parowania';
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        errorMessage,
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 4),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                action: SnackBarAction(
-                  label: 'Spróbuj ponownie',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    // Użytkownik może zeskanować ponownie
-                  },
+          print('QRScanner - Navigation to success screen completed');
+        } catch (e) {
+          print('QRScanner - Error during navigation: $e');
+          // Fallback - spróbuj pushReplacement
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => ResultScreen(
+                  success: true,
+                  message: message,
                 ),
               ),
             );
+            print('QRScanner - Fallback navigation completed');
+          } catch (e2) {
+            print('QRScanner - Fallback navigation also failed: $e2');
+          }
+        }
+      } else {
+        // Błąd - pokaż pełnoekranowy ekran błędu
+        print('QRScanner - Entering error block');
+        final errorMessage = result['message'] ?? 'Błąd podczas parowania';
+        print('QRScanner - Navigating to error screen with message: $errorMessage');
+        
+        try {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => ResultScreen(
+                success: false,
+                message: errorMessage,
+              ),
+            ),
+            (route) => route.isFirst,
+          );
+          print('QRScanner - Navigation to error screen completed');
+        } catch (e) {
+          print('QRScanner - Error during error navigation: $e');
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => ResultScreen(
+                  success: false,
+                  message: errorMessage,
+                ),
+              ),
+            );
+          } catch (e2) {
+            print('QRScanner - Fallback error navigation also failed: $e2');
           }
         }
       }
     } catch (e) {
+      print('QRScanner - Error: $e');
       if (mounted) {
-        await controller?.resumeCamera();
-        setState(() {
-          isProcessing = false;
-        });
+        await controller?.stopCamera();
         
         String errorMessage = 'Błąd połączenia z serwerem';
         if (e.toString().contains('SocketException') || 
@@ -133,28 +179,21 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           errorMessage = 'Przekroczono limit czasu.\nSpróbuj ponownie.';
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.wifi_off, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    errorMessage,
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => ResultScreen(
+              success: false,
+              message: errorMessage,
             ),
           ),
         );
+      }
+    } finally {
+      // Resetuj flagę przetwarzania
+      if (mounted) {
+        setState(() {
+          isProcessing = false;
+        });
       }
     }
   }

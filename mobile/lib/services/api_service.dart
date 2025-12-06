@@ -41,8 +41,14 @@ class ApiService {
         body: jsonEncode(body),
       );
 
+      print('ApiService - confirmPairing response status: ${response.statusCode}');
+      print('ApiService - confirmPairing response body: ${response.body}');
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        print('ApiService - confirmPairing decoded: $decoded');
+        print('ApiService - success value: ${decoded['success']}, type: ${decoded['success']?.runtimeType}');
+        return decoded;
       } else if (response.statusCode == 404) {
         final error = jsonDecode(response.body);
         final detail = error['detail'] ?? 'Kod nie został znaleziony';
