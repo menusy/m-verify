@@ -20,7 +20,7 @@ class GovApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,cd
+      debugShowCheckedModeBanner: false,
     );
   }
 }

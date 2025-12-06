@@ -48,6 +48,13 @@ header p {
   transition: all 0.3s;
   box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
   margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.button-icon {
+  font-size: 1.3rem;
 }
 
 .cta-button:hover {

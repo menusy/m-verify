@@ -11,7 +11,10 @@
     <header>
       <h1>Gov Application</h1>
       <p>Frontend połączony z API</p>
-      <button id="ctaButton" class="cta-button">Połącz z aplikacją mobilną</button>
+      <button id="ctaButton" class="cta-button">
+        <span class="button-icon">📱</span>
+        Wyświetl kod QR i PIN do parowania
+      </button>
     </header>
 
     <section class="panel panel--top" aria-label="Górna część">
@@ -54,7 +57,7 @@
     <div class="modal-content">
       <span class="close">&times;</span>
       <h2>Połącz z aplikacją mobilną</h2>
-      <p class="qr-instruction">Zeskanuj kod QR lub wpisz 6-cyfrowy kod PIN w aplikacji. Kod jest ważny przez 5 minut.</p>
+      <p class="qr-instruction">Wyświetl kod QR lub 6-cyfrowy kod PIN i użyj go w aplikacji mobilnej. Kod jest ważny przez 5 minut.</p>
       
       <!-- 6-cyfrowy kod PIN -->
       <div id="pinContainer" class="pin-container">

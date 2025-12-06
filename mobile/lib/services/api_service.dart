@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Zmień na adres Twojego serwera
-  static const String baseUrl = 'http://localhost:8000';
+  // Adres produkcyjnego backendu na Railway
+  static const String baseUrl = 'https://m-verify-production.up.railway.app';
+  // Dla lokalnego rozwoju użyj: 'http://localhost:8000'
   // Dla emulatora Android użyj: 'http://10.0.2.2:8000'
   // Dla emulatora iOS użyj: 'http://localhost:8000'
-  // Dla prawdziwego urządzenia użyj IP komputera: 'http://192.168.1.X:8000'
 
   static Future<Map<String, dynamic>> confirmPairing({
     String? token,
