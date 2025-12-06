@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import '../services/api_service.dart';
 import '../widgets/result_dialog.dart';
+import '../utils/device_info_helper.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -50,10 +51,15 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   Future<void> _processToken(String token) async {
     try {
+      // Pobierz dane urządzenia
+      final deviceId = await DeviceInfoHelper.getDeviceId();
+      final deviceName = await DeviceInfoHelper.getDeviceName();
+      
       // Wyślij potwierdzenie parowania
       final result = await ApiService.confirmPairing(
         token: token,
-        deviceName: 'Mobile App',
+        deviceId: deviceId,
+        deviceName: deviceName,
       );
 
       if (!mounted) return;

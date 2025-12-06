@@ -283,9 +283,9 @@ function startPairingStatusCheck() {
         clearInterval(pairingStatusInterval);
         
         if (status.status === 'confirmed') {
-          // Parowanie zakończone sukcesem
+          // Parowanie zakończone sukcesem - pokaż custom alert z danymi urządzenia
           setTimeout(() => {
-            alert('Parowanie zakończone pomyślnie! Aplikacja mobilna została połączona.');
+            showPairingSuccessAlert(status);
             closePairingModal();
           }, 1000);
         }
@@ -381,5 +381,40 @@ function closePairingModal() {
     qrTimer.textContent = '';
     qrTimer.className = '';
   }
+}
+
+// Funkcja do pokazania custom alertu sukcesu parowania
+function showPairingSuccessAlert(status) {
+  const alert = document.getElementById('pairingAlert');
+  const alertMessage = document.getElementById('pairingAlertMessage');
+  const alertClose = document.getElementById('pairingAlertClose');
+  
+  if (!alert || !alertMessage || !alertClose) return;
+  
+  // Przygotuj wiadomość z danymi urządzenia
+  let message = 'Aplikacja mobilna została połączona.';
+  if (status.device_name) {
+    message += `<br><br><strong>Urządzenie:</strong> ${status.device_name}`;
+  }
+  if (status.device_id) {
+    message += `<br><strong>ID urządzenia:</strong> <code style="background: rgba(0, 102, 204, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">${status.device_id}</code>`;
+  }
+  
+  alertMessage.innerHTML = message;
+  
+  // Pokaż alert
+  alert.classList.add('show');
+  
+  // Zamknij alert po kliknięciu przycisku
+  alertClose.onclick = () => {
+    alert.classList.remove('show');
+  };
+  
+  // Zamknij alert po kliknięciu poza nim
+  alert.onclick = (e) => {
+    if (e.target === alert) {
+      alert.classList.remove('show');
+    }
+  };
 }
 
