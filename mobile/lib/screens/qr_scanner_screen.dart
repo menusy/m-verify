@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
@@ -18,6 +19,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
   bool isProcessing = false;
+  String? lastScannedCode; // Zapamiętaj ostatni zeskanowany kod
+  StreamSubscription? _scanSubscription; // Subskrypcja streamu
 
   @override
   void reassemble() {
@@ -31,19 +34,35 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   @override
   void dispose() {
+    _scanSubscription?.cancel(); // Anuluj subskrypcję
     controller?.dispose();
     super.dispose();
   }
 
   Future<void> _onQRViewCreated(QRViewController controller) async {
     this.controller = controller;
-    controller.scannedDataStream.listen((scanData) async {
+    
+    // Anuluj poprzednią subskrypcję jeśli istnieje
+    await _scanSubscription?.cancel();
+    
+    // Utwórz nową subskrypcję
+    _scanSubscription = controller.scannedDataStream.listen((scanData) async {
+      // Sprawdź czy już przetwarzamy lub czy to ten sam kod
       if (isProcessing) return;
       
       final qrData = scanData.code;
       if (qrData != null && qrData.isNotEmpty) {
-        // Zatrzymaj kamerę natychmiast po zeskanowaniu, aby uniknąć ponownego skanowania
+        // Sprawdź czy to nie ten sam kod co ostatnio
+        if (qrData == lastScannedCode) {
+          return; // Ignoruj ten sam kod
+        }
+        
+        // Zapamiętaj zeskanowany kod
+        lastScannedCode = qrData;
+        
+        // Zatrzymaj kamerę i stream natychmiast po zeskanowaniu
         await controller.pauseCamera();
+        await _scanSubscription?.cancel(); // Zatrzymaj stream
         
         setState(() {
           isProcessing = true;
@@ -52,6 +71,34 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         await _processQRData(qrData);
       }
     });
+  }
+
+  // Wznów skanowanie po błędzie
+  Future<void> _resumeScanning() async {
+    if (controller != null && mounted) {
+      // Utwórz nową subskrypcję
+      _scanSubscription = controller!.scannedDataStream.listen((scanData) async {
+        if (isProcessing) return;
+        
+        final qrData = scanData.code;
+        if (qrData != null && qrData.isNotEmpty) {
+          // Sprawdź czy to nie ten sam kod co ostatnio
+          if (qrData == lastScannedCode) {
+            return;
+          }
+          
+          lastScannedCode = qrData;
+          await controller!.pauseCamera();
+          await _scanSubscription?.cancel();
+          
+          setState(() {
+            isProcessing = true;
+          });
+          
+          await _processQRData(qrData);
+        }
+      });
+    }
   }
 
   Future<void> _processQRData(String qrData) async {
@@ -235,10 +282,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           Navigator.of(context).pop(); // Zamknij dialog
           // Wznów skanowanie tylko jeśli użytkownik chce spróbować ponownie
           if (mounted) {
-            controller?.resumeCamera();
+            // Wyczyść ostatni zeskanowany kod, aby móc zeskanować ponownie
+            lastScannedCode = null;
             setState(() {
               isProcessing = false;
             });
+            // Wznów kamerę i stream
+            controller?.resumeCamera();
+            _resumeScanning();
           }
         },
       ),
