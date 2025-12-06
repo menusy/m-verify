@@ -1,3 +1,6 @@
+// Import CSS
+import './styles.css';
+
 // Konfiguracja API - używa tego samego hosta co frontend
 const API_BASE_URL = window.location.origin;
 

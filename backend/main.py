@@ -29,7 +29,9 @@ app.add_middleware(
 
 # Ścieżki do katalogów
 BASE_DIR = Path(__file__).resolve().parent.parent
-FRONTEND_DIR = BASE_DIR  # Frontend jest teraz w głównym katalogu
+# W produkcji użyj zbudowanych plików z Vite, w dev użyj źródłowych
+DIST_DIR = BASE_DIR / "dist"
+FRONTEND_DIR = DIST_DIR if DIST_DIR.exists() else BASE_DIR
 ASSETS_DIR = BASE_DIR / "assets"
 
 # Modele danych
@@ -311,9 +313,12 @@ async def confirm_pairing(confirm: PairingConfirm):
 
 # Serwowanie plików statycznych - na końcu, żeby nie kolidowały z endpointami API
 if FRONTEND_DIR.exists():
+    # Serwuj pliki statyczne z dist/ (Vite build) lub z głównego katalogu (dev)
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-if ASSETS_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+    # Główny plik HTML
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets") if (FRONTEND_DIR / "assets").exists() else None
+if ASSETS_DIR.exists() and not (FRONTEND_DIR / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets_original")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
