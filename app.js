@@ -1,8 +1,12 @@
 // Import CSS
 import './styles.css';
 
-// Konfiguracja API - używa tego samego hosta co frontend
-const API_BASE_URL = window.location.origin;
+// Konfiguracja API
+// W produkcji (Vercel) użyj Railway backendu, lokalnie użyj localhost
+const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+const API_BASE_URL = isProduction 
+  ? 'https://m-verify-production.up.railway.app'
+  : window.location.origin;
 
 // Funkcje pomocnicze
 async function fetchAPI(endpoint, options = {}) {
