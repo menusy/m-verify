@@ -29,7 +29,7 @@ app.add_middleware(
 
 # Ścieżki do katalogów
 BASE_DIR = Path(__file__).resolve().parent.parent
-FRONTEND_DIR = BASE_DIR / "frontend"
+FRONTEND_DIR = BASE_DIR  # Frontend jest teraz w głównym katalogu
 ASSETS_DIR = BASE_DIR / "assets"
 
 # Modele danych
@@ -71,7 +71,7 @@ async def list_page():
             return f.read()
     else:
         return HTMLResponse(
-            content="<h1>Frontend nie znaleziony</h1><p>Upewnij się, że plik frontend/index.html istnieje.</p>",
+            content="<h1>Frontend nie znaleziony</h1><p>Upewnij się, że plik index.html istnieje w głównym katalogu projektu.</p>",
             status_code=404
         )
 
