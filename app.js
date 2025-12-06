@@ -240,7 +240,7 @@ async function generatePairingQR() {
     
     // Wyświetl QR code
     const qrImage = document.createElement('img');
-    qrImage.src = `/api/pairing/qr/${currentPairingToken}`;
+    qrImage.src = `${API_BASE_URL}/api/pairing/qr/${currentPairingToken}`;
     qrImage.alt = 'QR Code do parowania';
     qrContainer.innerHTML = '';
     qrContainer.appendChild(qrImage);
