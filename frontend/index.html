@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gov - Frontend</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Gov Application</h1>
+      <p>Frontend połączony z API</p>
+      <button id="ctaButton" class="cta-button">Połącz z aplikacją mobilną</button>
+    </header>
+
+    <section class="panel panel--top" aria-label="Górna część">
+      <div class="panel-content">
+        <h2>Panel Górny</h2>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="container">
+        <h2>Zarządzanie danymi</h2>
+        
+        <div class="form-section">
+          <h3>Dodaj nowy element</h3>
+          <form id="itemForm">
+            <input type="text" id="itemName" placeholder="Nazwa" required>
+            <input type="text" id="itemDescription" placeholder="Opis">
+            <button type="submit">Dodaj</button>
+          </form>
+        </div>
+
+        <div class="items-section">
+          <h3>Lista elementów</h3>
+          <div id="itemsList" class="items-list">
+            <p class="loading">Ładowanie...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel panel--bottom" aria-label="Dolna część">
+      <div class="panel-content">
+        <h2>Panel Dolny</h2>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal z QR code -->
+  <div id="qrModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Połącz z aplikacją mobilną</h2>
+      <p class="qr-instruction">Zeskanuj kod QR lub wpisz 6-cyfrowy kod PIN w aplikacji. Kod jest ważny przez 5 minut.</p>
+      
+      <!-- 6-cyfrowy kod PIN -->
+      <div id="pinContainer" class="pin-container">
+        <div class="pin-label">Kod PIN:</div>
+        <div id="pinCode" class="pin-code">------</div>
+        <button id="copyPinBtn" class="copy-pin-btn" style="display: none;">Kopiuj kod</button>
+      </div>
+      
+      <!-- QR Code -->
+      <div class="qr-divider">
+        <span>lub</span>
+      </div>
+      <div id="qrContainer" class="qr-container">
+        <div class="qr-loading">Generowanie kodu QR...</div>
+      </div>
+      
+      <div id="qrStatus" class="qr-status"></div>
+      <div id="qrTimer" class="qr-timer"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
