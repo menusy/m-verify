@@ -25,19 +25,20 @@ class HomeScreen extends StatelessWidget {
                 color: Color(0xFF0066CC),
               ),
               const SizedBox(height: 32),
-              const Text(
+              Text(
                 'Połącz z systemem',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Wybierz metodę parowania',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 48),

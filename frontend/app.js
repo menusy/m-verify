@@ -146,17 +146,28 @@ let pairingStatusInterval = null;
 
 function initPairingQR() {
   const ctaButton = document.getElementById('ctaButton');
+  const topPairingButton = document.getElementById('topPairingButton');
   const modal = document.getElementById('qrModal');
   const closeBtn = document.querySelector('.close');
   const copyPinBtn = document.getElementById('copyPinBtn');
   
-  if (!ctaButton || !modal) return;
+  if (!modal) return;
   
-  // Otwórz modal po kliknięciu CTA
-  ctaButton.addEventListener('click', async () => {
+  // Funkcja do otwierania modala
+  const openPairingModal = async () => {
     await generatePairingQR();
     modal.classList.add('show');
-  });
+  };
+  
+  // Otwórz modal po kliknięciu CTA w headerze
+  if (ctaButton) {
+    ctaButton.addEventListener('click', openPairingModal);
+  }
+  
+  // Otwórz modal po kliknięciu przycisku na górze
+  if (topPairingButton) {
+    topPairingButton.addEventListener('click', openPairingModal);
+  }
   
   // Zamknij modal
   closeBtn.addEventListener('click', () => {

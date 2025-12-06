@@ -179,19 +179,20 @@ class _PinInputScreenState extends State<PinInputScreen> {
               color: Color(0xFF0066CC),
             ),
             const SizedBox(height: 32),
-            const Text(
+            Text(
               'Wprowadź 6-cyfrowy kod PIN',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Kod wyświetlony na stronie internetowej',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -209,9 +210,10 @@ class _PinInputScreenState extends State<PinInputScreen> {
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
                     maxLength: 1,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
@@ -234,11 +236,13 @@ class _PinInputScreenState extends State<PinInputScreen> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Colors.grey,
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outline,
                           width: 1,
                         ),
                       ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
                     ),
                     onChanged: (value) => _onPinChanged(index, value),
                   ),
