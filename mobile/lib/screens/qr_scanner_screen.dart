@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import '../services/api_service.dart';
 import '../widgets/result_dialog.dart';
+import '../widgets/verification_result_dialog.dart';
 import '../utils/device_info_helper.dart';
 
 class QRScannerScreen extends StatefulWidget {
@@ -38,19 +39,41 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     controller.scannedDataStream.listen((scanData) async {
       if (isProcessing) return;
       
-      final token = scanData.code;
-      if (token != null && token.isNotEmpty) {
+      final qrData = scanData.code;
+      if (qrData != null && qrData.isNotEmpty) {
         setState(() {
           isProcessing = true;
         });
         
-        await _processToken(token);
+        await _processQRData(qrData);
       }
     });
   }
 
-  Future<void> _processToken(String token) async {
+  Future<void> _processQRData(String qrData) async {
     try {
+      // Parsuj QR data - format: "token:nonce" lub tylko "token" (backward compatibility)
+      String? token;
+      String? nonce;
+      
+      if (qrData.contains(':')) {
+        final parts = qrData.split(':');
+        if (parts.length == 2) {
+          token = parts[0];
+          nonce = parts[1];
+        } else {
+          // Nieprawidłowy format
+          _showErrorVerification(
+            'Nieprawidłowy format kodu QR.\nZeskanuj kod ponownie.',
+            'Kod QR może być uszkodzony lub nieaktualny.',
+          );
+          return;
+        }
+      } else {
+        // Backward compatibility - tylko token (bez nonce)
+        token = qrData;
+      }
+      
       // Pobierz dane urządzenia
       final deviceId = await DeviceInfoHelper.getDeviceId();
       final deviceName = await DeviceInfoHelper.getDeviceName();
@@ -58,6 +81,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       // Wyślij potwierdzenie parowania
       final result = await ApiService.confirmPairing(
         token: token,
+        nonce: nonce,
         deviceId: deviceId,
         deviceName: deviceName,
       );
@@ -73,51 +97,23 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       await controller?.pauseCamera();
 
       if (result['success'] == true) {
-        // SUKCES - pokaż dialog sukcesu
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => ResultDialog(
-            success: true,
-            message: 'Parowanie zakończone pomyślnie!',
-            onClose: () {
-              Navigator.of(context).pop(); // Zamknij dialog
-              Navigator.of(context).pop(); // Wróć do HomeScreen
-            },
-          ),
+        // SUKCES - pokaż dialog weryfikacji z instrukcjami
+        final verificationResult = result['verification_result'] as Map<String, dynamic>?;
+        final instructions = verificationResult?['instructions'] as List<dynamic>?;
+        
+        _showSuccessVerification(
+          verificationResult?['message'] ?? 'Strona jest zaufana i zweryfikowana.',
+          instructions?.cast<String>() ?? [],
         );
       } else {
-        // Błąd - pokaż SnackBar i wznowij skanowanie
-        final errorMessage = result['message'] ?? 'Błąd podczas parowania';
+        // Błąd - pokaż komunikat weryfikacji negatywnej
+        final errorMessage = result['message'] ?? 'Błąd podczas weryfikacji';
+        final detail = result['detail'] as String?;
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    errorMessage,
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        _showErrorVerification(
+          errorMessage,
+          detail ?? 'Nie udało się zweryfikować strony. Sprawdź kod QR i spróbuj ponownie.',
         );
-        
-        // Wznów skanowanie po pokazaniu błędu
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          await controller?.resumeCamera();
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -126,43 +122,67 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         });
         
         String errorMessage = 'Błąd połączenia z serwerem';
+        String instructions = 'Sprawdź połączenie internetowe i spróbuj ponownie.';
+        
         if (e.toString().contains('SocketException') || 
             e.toString().contains('Failed host lookup')) {
-          errorMessage = 'Nie można połączyć się z serwerem.\nSprawdź połączenie internetowe.';
+          errorMessage = 'Nie można połączyć się z serwerem';
+          instructions = 'Sprawdź połączenie internetowe.\nUpewnij się, że masz dostęp do sieci.';
         } else if (e.toString().contains('TimeoutException')) {
-          errorMessage = 'Przekroczono limit czasu.\nSpróbuj ponownie.';
+          errorMessage = 'Przekroczono limit czasu';
+          instructions = 'Serwer nie odpowiedział w odpowiednim czasie.\nSpróbuj ponownie za chwilę.';
+        } else if (e.toString().contains('400') || e.toString().contains('Invalid')) {
+          errorMessage = 'Nieprawidłowy kod weryfikacyjny';
+          instructions = 'Kod QR może być nieaktualny lub uszkodzony.\nWygeneruj nowy kod na stronie.';
+        } else if (e.toString().contains('404')) {
+          errorMessage = 'Kod weryfikacyjny nie został znaleziony';
+          instructions = 'Kod może wygasnąć (ważny 5 minut).\nWygeneruj nowy kod na stronie.';
+        } else if (e.toString().contains('410')) {
+          errorMessage = 'Kod weryfikacyjny wygasł';
+          instructions = 'Kody weryfikacyjne są ważne przez 5 minut.\nWygeneruj nowy kod na stronie.';
+        } else if (e.toString().contains('429') || e.toString().contains('Rate limit')) {
+          errorMessage = 'Zbyt wiele prób weryfikacji';
+          instructions = 'Poczekaj chwilę przed kolejną próbą.\nOgraniczenie chroni przed nadużyciami.';
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.wifi_off, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    errorMessage,
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-        
-        // Wznów skanowanie po pokazaniu błędu
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          await controller?.resumeCamera();
-        }
+        _showErrorVerification(errorMessage, instructions);
       }
     }
+  }
+
+  void _showSuccessVerification(String message, List<String> instructions) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => VerificationResultDialog(
+        success: true,
+        title: 'Strona zweryfikowana',
+        message: message,
+        instructions: instructions,
+        onClose: () {
+          Navigator.of(context).pop(); // Zamknij dialog
+          Navigator.of(context).pop(); // Wróć do HomeScreen
+        },
+      ),
+    );
+  }
+
+  void _showErrorVerification(String errorMessage, String instructions) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => VerificationResultDialog(
+        success: false,
+        title: 'Ostrzeżenie weryfikacji',
+        message: errorMessage,
+        instructions: [instructions],
+        onClose: () {
+          Navigator.of(context).pop(); // Zamknij dialog
+          // Wznów skanowanie
+          controller?.resumeCamera();
+        },
+      ),
+    );
   }
 
   @override

@@ -3,4 +3,5 @@ uvicorn[standard]==0.32.0
 pydantic==2.9.0
 python-multipart==0.0.12
 qrcode[pil]==7.4.2
+slowapi==0.1.9
 
