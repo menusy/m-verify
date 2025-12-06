@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 # Ścieżki do katalogów
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 ASSETS_DIR = BASE_DIR / "assets"
 
