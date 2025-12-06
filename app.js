@@ -242,8 +242,14 @@ async function generatePairingQR() {
     const qrImage = document.createElement('img');
     qrImage.src = `${API_BASE_URL}/api/pairing/qr/${currentPairingToken}`;
     qrImage.alt = 'QR Code do parowania';
-    qrContainer.innerHTML = '';
-    qrContainer.appendChild(qrImage);
+    qrImage.onerror = () => {
+      qrContainer.innerHTML = `<p class="error">Błąd podczas ładowania obrazka QR. Spróbuj odświeżyć stronę lub użyj kodu PIN.</p>`;
+    };
+    qrImage.onload = () => {
+      qrContainer.innerHTML = '';
+      qrContainer.appendChild(qrImage);
+    };
+    qrContainer.innerHTML = '<div class="qr-loading">Ładowanie obrazka QR...</div>';
     
     // Ustaw status
     qrStatus.innerHTML = '<div class="qr-status pending">Oczekiwanie na skanowanie QR lub wpisanie PIN...</div>';

@@ -62,6 +62,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       if (mounted) {
         if (result['success'] == true) {
           await controller?.stopCamera();
+          // Ukryj ekran "Przetwarzanie..." przed pokazaniem dialogu sukcesu
+          setState(() {
+            isProcessing = false;
+          });
           showDialog(
             context: context,
             barrierDismissible: false,
