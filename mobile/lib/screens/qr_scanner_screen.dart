@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import '../services/api_service.dart';
+import '../services/verification_history_service.dart';
 import '../widgets/result_dialog.dart';
 import '../widgets/verification_result_dialog.dart';
 import '../utils/device_info_helper.dart';
@@ -41,6 +42,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       
       final qrData = scanData.code;
       if (qrData != null && qrData.isNotEmpty) {
+        // Zatrzymaj kamerę natychmiast po zeskanowaniu, aby uniknąć ponownego skanowania
+        await controller.pauseCamera();
+        
         setState(() {
           isProcessing = true;
         });
@@ -64,8 +68,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         } else {
           // Nieprawidłowy format
           _showErrorVerification(
-            'Nieprawidłowy format kodu QR.\nZeskanuj kod ponownie.',
-            'Kod QR może być uszkodzony lub nieaktualny.',
+            'Nieprawidłowy kod weryfikacyjny',
+            'Kod może być uszkodzony',
           );
           return;
         }
@@ -93,13 +97,20 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         isProcessing = false;
       });
 
-      // Zatrzymaj kamerę po otrzymaniu odpowiedzi
-      await controller?.pauseCamera();
+      // Kamera jest już zatrzymana po zeskanowaniu, więc nie trzeba jej zatrzymywać ponownie
 
       if (result['success'] == true) {
         // SUKCES - pokaż dialog weryfikacji z instrukcjami
         final verificationResult = result['verification_result'] as Map<String, dynamic>?;
         final instructions = verificationResult?['instructions'] as List<dynamic>?;
+        
+        // Zapisz do historii
+        await VerificationHistoryService.saveVerification(
+          verified: true,
+          message: verificationResult?['message'] ?? 'Strona jest zaufana i zweryfikowana.',
+          deviceName: deviceName,
+          verificationResult: verificationResult,
+        );
         
         _showSuccessVerification(
           verificationResult?['message'] ?? 'Strona jest zaufana i zweryfikowana.',
@@ -109,6 +120,17 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         // Błąd - pokaż komunikat weryfikacji negatywnej
         final errorMessage = result['message'] ?? 'Błąd podczas weryfikacji';
         final detail = result['detail'] as String?;
+        final errorType = result['error_type'] as String?;
+        final verificationResult = result['verification_result'] as Map<String, dynamic>?;
+        
+        // Zapisz do historii
+        await VerificationHistoryService.saveVerification(
+          verified: false,
+          message: errorMessage,
+          deviceName: deviceName,
+          errorType: errorType,
+          verificationResult: verificationResult,
+        );
         
         _showErrorVerification(
           errorMessage,
@@ -145,6 +167,19 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           instructions = 'Poczekaj chwilę przed kolejną próbą.\nOgraniczenie chroni przed nadużyciami.';
         }
         
+        // Zapisz do historii
+        await VerificationHistoryService.saveVerification(
+          verified: false,
+          message: errorMessage,
+          errorType: 'network_error',
+          verificationResult: {
+            'verified': false,
+            'message': errorMessage,
+            'severity': 'error',
+            'instructions': [instructions]
+          },
+        );
+        
         _showErrorVerification(errorMessage, instructions);
       }
     }
@@ -157,8 +192,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       builder: (context) => VerificationResultDialog(
         success: true,
         title: 'Strona zweryfikowana',
-        message: message,
-        instructions: instructions,
+        message: message.isNotEmpty ? message : 'Strona jest zaufana i zweryfikowana',
+        instructions: instructions.isNotEmpty 
+            ? instructions 
+            : [
+                'Możesz bezpiecznie korzystać z tej strony',
+                'Sprawdź adres URL - powinien kończyć się na .gov.pl',
+                'Zwróć uwagę na certyfikat SSL (🔒 w pasku adresu)'
+              ],
         onClose: () {
           Navigator.of(context).pop(); // Zamknij dialog
           Navigator.of(context).pop(); // Wróć do HomeScreen
@@ -168,6 +209,20 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   }
 
   void _showErrorVerification(String errorMessage, String instructions) {
+    // Przygotuj instrukcje na podstawie typu błędu
+    List<String> errorInstructions = [instructions];
+    
+    // Dodatkowe instrukcje dla konkretnych typów błędów
+    if (errorMessage.contains('wygasł') || errorMessage.contains('expired')) {
+      errorInstructions = ['Wygeneruj nowy kod'];
+    } else if (errorMessage.contains('już użyty') || errorMessage.contains('already')) {
+      errorInstructions = ['Każdy kod może być użyty tylko raz'];
+    } else if (errorMessage.contains('uszkodzony') || errorMessage.contains('Invalid')) {
+      errorInstructions = ['Kod może być uszkodzony'];
+    } else if (errorMessage.contains('Rate limit') || errorMessage.contains('429')) {
+      errorInstructions = ['Poczekaj chwilę przed kolejną próbą'];
+    }
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -175,11 +230,16 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         success: false,
         title: 'Ostrzeżenie weryfikacji',
         message: errorMessage,
-        instructions: [instructions],
+        instructions: errorInstructions,
         onClose: () {
           Navigator.of(context).pop(); // Zamknij dialog
-          // Wznów skanowanie
-          controller?.resumeCamera();
+          // Wznów skanowanie tylko jeśli użytkownik chce spróbować ponownie
+          if (mounted) {
+            controller?.resumeCamera();
+            setState(() {
+              isProcessing = false;
+            });
+          }
         },
       ),
     );

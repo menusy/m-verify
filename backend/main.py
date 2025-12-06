@@ -438,12 +438,12 @@ async def confirm_pairing(request: Request, confirm: PairingConfirm):
         "confirmed_at": current_time,
         "verification_result": {
             "verified": True,
-            "message": "Strona jest zaufana i zweryfikowana.",
+            "message": "Strona jest zaufana i zweryfikowana",
             "severity": "success",
             "instructions": [
-                "Możesz bezpiecznie korzystać z tej strony.",
+                "Możesz bezpiecznie korzystać z tej strony",
                 "Sprawdź adres URL - powinien kończyć się na .gov.pl",
-                "Zwróć uwagę na certyfikat SSL (🔒 w pasku adresu)."
+                "Zwróć uwagę na certyfikat SSL (🔒 w pasku adresu)"
             ]
         }
     }

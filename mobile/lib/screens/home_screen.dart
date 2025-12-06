@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'qr_scanner_screen.dart';
 import 'pin_input_screen.dart';
+import 'verification_history_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,6 +13,20 @@ class HomeScreen extends StatelessWidget {
         title: const Text('Gov Mobile'),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VerificationHistoryScreen(),
+                ),
+              );
+            },
+            tooltip: 'Historia weryfikacji',
+          ),
+        ],
       ),
       body: Center(
         child: Padding(
@@ -93,6 +108,22 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VerificationHistoryScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history),
+                label: const Text('Historia weryfikacji'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey[700],
                 ),
               ),
             ],

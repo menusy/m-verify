@@ -39,7 +39,7 @@ class VerificationResultDialog extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                success ? Icons.verified : Icons.warning_amber_rounded,
+                success ? Icons.check_circle : Icons.warning_amber_rounded,
                 size: 64,
                 color: success ? Colors.green : Colors.red,
               ),
@@ -91,7 +91,7 @@ class VerificationResultDialog extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          success ? Icons.info_outline : Icons.warning_outline,
+                          success ? Icons.info_outline : Icons.warning_amber_rounded,
                           size: 20,
                           color: success ? Colors.green : Colors.orange,
                         ),

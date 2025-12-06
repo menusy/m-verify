@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -39,12 +41,20 @@ class ApiService {
         body['device_name'] = deviceName;
       }
 
+      // Timeout 30 sekund dla weryfikacji
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode(body),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException(
+            'Request timeout - serwer nie odpowiedział w ciągu 30 sekund',
+          );
+        },
       );
 
       print('ApiService - confirmPairing response status: ${response.statusCode}');
@@ -66,17 +76,17 @@ class ApiService {
         String instructions = 'Sprawdź kod QR i spróbuj ponownie.';
         
         if (detail.contains('already confirmed') || verificationResult == 'already_confirmed') {
-          message = 'Ten kod został już użyty';
-          instructions = 'Każdy kod QR może być użyty tylko raz.\nWygeneruj nowy kod na stronie.';
+          message = 'Kod już użyty';
+          instructions = 'Każdy kod może być użyty tylko raz';
         } else if (detail.contains('Nonce already used') || verificationResult == 'nonce_used') {
           message = 'Kod QR został już zeskanowany';
-          instructions = 'Ten kod QR został już użyty do weryfikacji.\nWygeneruj nowy kod na stronie.';
+          instructions = 'Każdy kod może być użyty tylko raz';
         } else if (detail.contains('Invalid nonce') || verificationResult == 'invalid_nonce') {
           message = 'Nieprawidłowy kod weryfikacyjny';
-          instructions = 'Kod QR może być nieaktualny lub uszkodzony.\nWygeneruj nowy kod na stronie.';
+          instructions = 'Kod może być uszkodzony';
         } else if (detail.contains('must be provided')) {
           message = 'Brak danych do weryfikacji';
-          instructions = 'Upewnij się, że zeskanowałeś poprawny kod QR.';
+          instructions = 'Upewnij się, że zeskanowałeś poprawny kod QR';
         }
         
         return {
@@ -119,16 +129,14 @@ class ApiService {
       } else if (response.statusCode == 410) {
         return {
           'success': false,
-          'message': 'Kod weryfikacyjny wygasł',
-          'detail': 'Kody weryfikacyjne są ważne przez 5 minut.\nWygeneruj nowy kod na stronie.',
+          'message': 'Kod wygasł',
+          'detail': 'Wygeneruj nowy kod',
           'verification_result': {
             'verified': false,
-            'message': 'Kod weryfikacyjny wygasł',
+            'message': 'Kod wygasł',
             'severity': 'expired',
             'instructions': [
-              'Kody weryfikacyjne są ważne przez 5 minut.',
-              'Wygeneruj nowy kod na stronie.',
-              'Upewnij się, że zeskanujesz kod zaraz po wygenerowaniu.'
+              'Wygeneruj nowy kod'
             ]
           }
         };
@@ -136,15 +144,13 @@ class ApiService {
         return {
           'success': false,
           'message': 'Zbyt wiele prób weryfikacji',
-          'detail': 'Poczekaj chwilę przed kolejną próbą.',
+          'detail': 'Poczekaj chwilę przed kolejną próbą',
           'verification_result': {
             'verified': false,
             'message': 'Zbyt wiele prób weryfikacji',
             'severity': 'rate_limit',
             'instructions': [
-              'Ograniczenie chroni przed nadużyciami.',
-              'Poczekaj 1-2 minuty przed kolejną próbą.',
-              'Jeśli problem się powtarza, skontaktuj się z pomocą techniczną.'
+              'Poczekaj chwilę przed kolejną próbą'
             ]
           }
         };
@@ -165,10 +171,102 @@ class ApiService {
           }
         };
       }
-    } catch (e) {
+    } on SocketException catch (e) {
       return {
         'success': false,
-        'message': 'Błąd połączenia: ${e.toString()}',
+        'message': 'Brak połączenia z internetem',
+        'detail': 'Sprawdź połączenie internetowe i spróbuj ponownie.',
+        'error_type': 'no_connection',
+        'verification_result': {
+          'verified': false,
+          'message': 'Brak połączenia z internetem',
+          'severity': 'error',
+          'instructions': [
+            'Sprawdź czy masz włączone Wi-Fi lub dane mobilne.',
+            'Upewnij się, że masz dostęp do internetu.',
+            'Spróbuj ponownie po przywróceniu połączenia.'
+          ]
+        }
+      };
+    } on HttpException catch (e) {
+      return {
+        'success': false,
+        'message': 'Błąd połączenia HTTP',
+        'detail': 'Nie można nawiązać połączenia z serwerem.',
+        'error_type': 'http_error',
+        'verification_result': {
+          'verified': false,
+          'message': 'Błąd połączenia z serwerem',
+          'severity': 'error',
+          'instructions': [
+            'Sprawdź połączenie internetowe.',
+            'Serwer może być tymczasowo niedostępny.',
+            'Spróbuj ponownie za chwilę.'
+          ]
+        }
+      };
+    } on TimeoutException catch (e) {
+      return {
+        'success': false,
+        'message': 'Przekroczono limit czasu',
+        'detail': 'Serwer nie odpowiedział w ciągu 30 sekund.',
+        'error_type': 'timeout',
+        'verification_result': {
+          'verified': false,
+          'message': 'Przekroczono limit czasu',
+          'severity': 'timeout',
+          'instructions': [
+            'Serwer nie odpowiedział w odpowiednim czasie.',
+            'Sprawdź połączenie internetowe.',
+            'Spróbuj ponownie za chwilę.'
+          ]
+        }
+      };
+    } on FormatException catch (e) {
+      return {
+        'success': false,
+        'message': 'Błąd formatu odpowiedzi',
+        'detail': 'Serwer zwrócił nieprawidłową odpowiedź.',
+        'error_type': 'format_error',
+        'verification_result': {
+          'verified': false,
+          'message': 'Błąd formatu odpowiedzi',
+          'severity': 'error',
+          'instructions': [
+            'Serwer zwrócił nieprawidłową odpowiedź.',
+            'Spróbuj ponownie.',
+            'Jeśli problem się powtarza, skontaktuj się z pomocą techniczną.'
+          ]
+        }
+      };
+    } catch (e) {
+      // Ogólny błąd
+      String errorMessage = 'Nieoczekiwany błąd';
+      String errorType = 'unknown';
+      
+      if (e.toString().contains('Failed host lookup')) {
+        errorMessage = 'Nie można znaleźć serwera';
+        errorType = 'host_lookup_failed';
+      } else if (e.toString().contains('Connection refused')) {
+        errorMessage = 'Połączenie odrzucone';
+        errorType = 'connection_refused';
+      }
+      
+      return {
+        'success': false,
+        'message': errorMessage,
+        'detail': 'Wystąpił nieoczekiwany błąd: ${e.toString()}',
+        'error_type': errorType,
+        'verification_result': {
+          'verified': false,
+          'message': errorMessage,
+          'severity': 'error',
+          'instructions': [
+            'Wystąpił nieoczekiwany błąd.',
+            'Spróbuj ponownie.',
+            'Jeśli problem się powtarza, skontaktuj się z pomocą techniczną.'
+          ]
+        }
       };
     }
   }
