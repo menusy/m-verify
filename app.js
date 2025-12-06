@@ -217,7 +217,9 @@ async function generatePairingQR() {
   
   try {
     // Generuj nowy token parowania
-    const response = await fetchAPI('/api/pairing/generate');
+    const response = await fetchAPI('/api/pairing/generate', {
+      method: 'POST'
+    });
     currentPairingToken = response.token;
     const pin = response.pin;
     
