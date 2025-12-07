@@ -2,99 +2,67 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gov - Frontend</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>gov.pl | Zweryfikuj autentyczność</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500&display=swap" rel="stylesheet">
 </head>
 <body>
-  <main>
-    <!-- Przycisk na samej górze - sticky -->
-    <div class="top-pairing-button-container">
-      <button id="topPairingButton" class="top-pairing-button">
-        <span class="button-icon">📱</span>
-        <span class="button-text">Generuj kod QR i PIN</span>
-      </button>
-    </div>
+  <div class="hero-background" aria-hidden="true">
+    <div class="hero-background__overlay"></div>
+  </div>
 
-    <header>
-      <h1>Gov Application</h1>
-      <p>Frontend połączony z API</p>
-      <button id="ctaButton" class="cta-button">
-        <span class="button-icon">📱</span>
-        Wyświetl kod QR i PIN do parowania
-      </button>
-    </header>
+  <button class="authenticity-trigger" type="button" data-auth-open>
+    <span>Nie ufasz tej stronie?</span>
+    Zweryfikuj, czy jest oficjalna!
+  </button>
 
-    <section class="panel panel--top" aria-label="Górna część">
-      <div class="panel-content">
-        <h2>Panel Górny</h2>
-      </div>
-    </section>
+  <div id="authOverlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="authTitle" hidden>
+    <div class="auth-card">
+      <button class="auth-card__close" type="button" aria-label="Zamknij okno" data-auth-close>&times;</button>
+      <p class="auth-card__eyebrow">Nie ufasz tej stronie?</p>
+      <h2 id="authTitle">Zweryfikuj autentyczność jednym skanem</h2>
+      <p class="auth-card__subtitle">
+        Zeskanuj kod w aplikacji mObywatel, aby mieć pewność, że jesteś na oficjalnej stronie gov.pl.
+      </p>
 
-    <section class="content-section">
-      <div class="container">
-        <h2>Zarządzanie danymi</h2>
-        
-        <div class="form-section">
-          <h3>Dodaj nowy element</h3>
-          <form id="itemForm">
-            <input type="text" id="itemName" placeholder="Nazwa" required>
-            <input type="text" id="itemDescription" placeholder="Opis">
-            <button type="submit">Dodaj</button>
-          </form>
+      <div class="auth-card__content">
+        <div class="auth-qr" aria-hidden="true">
+          <svg viewBox="0 0 120 120" role="img" aria-label="Przykładowy kod QR">
+            <rect width="120" height="120" fill="#0b1c3c"/>
+            <rect x="8" y="8" width="32" height="32" fill="#f7f8fb"/>
+            <rect x="80" y="8" width="32" height="32" fill="#f7f8fb"/>
+            <rect x="8" y="80" width="32" height="32" fill="#f7f8fb"/>
+            <rect x="20" y="20" width="8" height="8" fill="#0b1c3c"/>
+            <rect x="92" y="20" width="8" height="8" fill="#0b1c3c"/>
+            <rect x="20" y="92" width="8" height="8" fill="#0b1c3c"/>
+            <rect x="52" y="52" width="12" height="12" fill="#f7f8fb"/>
+            <rect x="68" y="52" width="6" height="6" fill="#f7f8fb"/>
+            <rect x="52" y="68" width="6" height="6" fill="#f7f8fb"/>
+            <rect x="64" y="82" width="12" height="12" fill="#f7f8fb"/>
+            <rect x="82" y="64" width="12" height="12" fill="#f7f8fb"/>
+          </svg>
         </div>
 
-        <div class="items-section">
-          <h3>Lista elementów</h3>
-          <div id="itemsList" class="items-list">
-            <p class="loading">Ładowanie...</p>
+        <div class="auth-pin">
+          <div class="auth-pin__label">PIN</div>
+          <div class="auth-pin__value" id="authPinValue">385536</div>
+          <div class="auth-pin__timer">
+            Kod wygaśnie za <span id="authCountdown">02:00</span>
+          </div>
+          <div class="auth-progress">
+            <div class="auth-progress__bar" id="authProgress"></div>
+          </div>
+          <p class="auth-pin__hint">
+            Kod aktywny przez 2 minuty. Zeskanuj go w aplikacji mObywatel.
+          </p>
+          <div class="auth-pin__actions">
+            <button type="button" id="authRefresh">Odśwież kod</button>
+            <button type="button" class="link-button" data-auth-close>Zamknij</button>
           </div>
         </div>
       </div>
-    </section>
-
-    <section class="panel panel--bottom" aria-label="Dolna część">
-      <div class="panel-content">
-        <h2>Panel Dolny</h2>
-      </div>
-    </section>
-  </main>
-
-  <!-- Modal z QR code -->
-  <div id="qrModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2>Połącz z aplikacją mobilną</h2>
-      <p class="qr-instruction">Wyświetl kod QR lub 6-cyfrowy kod PIN i użyj go w aplikacji mobilnej. Kod jest ważny przez 5 minut.</p>
-      
-      <!-- 6-cyfrowy kod PIN -->
-      <div id="pinContainer" class="pin-container">
-        <div class="pin-label">Kod PIN:</div>
-        <div id="pinCode" class="pin-code">------</div>
-        <button id="copyPinBtn" class="copy-pin-btn" style="display: none;">Kopiuj kod</button>
-      </div>
-      
-      <!-- QR Code -->
-      <div class="qr-divider">
-        <span>lub</span>
-      </div>
-      <div id="qrContainer" class="qr-container">
-        <div class="qr-loading">Generowanie kodu QR...</div>
-      </div>
-      
-      <div id="qrStatus" class="qr-status"></div>
-      <div id="qrTimer" class="qr-timer"></div>
-    </div>
-  </div>
-
-  <!-- Custom Alert dla parowania -->
-  <div id="pairingAlert" class="pairing-alert">
-    <div class="pairing-alert-content">
-      <div class="pairing-alert-icon">✓</div>
-      <div class="pairing-alert-text">
-        <div class="pairing-alert-title">Parowanie zakończone pomyślnie!</div>
-        <div class="pairing-alert-message" id="pairingAlertMessage"></div>
-      </div>
-      <button class="pairing-alert-close" id="pairingAlertClose">OK</button>
     </div>
   </div>
 

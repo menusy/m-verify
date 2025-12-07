@@ -1,420 +1,105 @@
-// Import CSS
 import './styles.css';
 
-// Konfiguracja API
-// W produkcji (Vercel) użyj Railway backendu, lokalnie użyj localhost
-const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
-const API_BASE_URL = isProduction 
-  ? 'https://m-verify-production.up.railway.app'
-  : window.location.origin;
+const CODE_TTL_SECONDS = 120;
 
-// Funkcje pomocnicze
-async function fetchAPI(endpoint, options = {}) {
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
+let overlay;
+let pinValueEl;
+let countdownEl;
+let progressEl;
+let refreshBtn;
+let openerBtn;
+let closeButtons;
+let countdownInterval = null;
+let secondsRemaining = CODE_TTL_SECONDS;
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
-}
-
-// Pobierz wszystkie elementy
-async function loadItems() {
-  const itemsList = document.getElementById('itemsList');
-  itemsList.innerHTML = '<p class="loading">Ładowanie...</p>';
-
-  try {
-    const items = await fetchAPI('/api/items');
-    
-    if (items.length === 0) {
-      itemsList.innerHTML = '<p class="loading">Brak elementów. Dodaj pierwszy!</p>';
-      return;
-    }
-
-    itemsList.innerHTML = items.map(item => `
-      <div class="item-card" data-id="${item.id}">
-        <h4>${escapeHtml(item.name)}</h4>
-        <p>${escapeHtml(item.description || 'Brak opisu')}</p>
-        <div class="item-actions">
-          <button class="btn-delete" onclick="deleteItem(${item.id})">Usuń</button>
-        </div>
-      </div>
-    `).join('');
-  } catch (error) {
-    itemsList.innerHTML = `<p class="error">Błąd podczas ładowania danych: ${error.message}</p>`;
-  }
-}
-
-// Dodaj nowy element
-async function createItem(name, description) {
-  try {
-    await fetchAPI('/api/items', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: name,
-        description: description || null,
-      }),
-    });
-    
-    // Odśwież listę
-    await loadItems();
-    
-    // Wyczyść formularz
-    document.getElementById('itemForm').reset();
-  } catch (error) {
-    alert(`Błąd podczas dodawania elementu: ${error.message}`);
-  }
-}
-
-// Usuń element
-async function deleteItem(id) {
-  if (!confirm('Czy na pewno chcesz usunąć ten element?')) {
-    return;
-  }
-
-  try {
-    await fetchAPI(`/api/items/${id}`, {
-      method: 'DELETE',
-    });
-    
-    // Odśwież listę
-    await loadItems();
-  } catch (error) {
-    alert(`Błąd podczas usuwania elementu: ${error.message}`);
-  }
-}
-
-// Funkcja pomocnicza do escapowania HTML
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// Obsługa formularza
-document.getElementById('itemForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  const name = document.getElementById('itemName').value.trim();
-  const description = document.getElementById('itemDescription').value.trim();
-  
-  if (!name) {
-    alert('Nazwa jest wymagana!');
-    return;
-  }
-  
-  await createItem(name, description);
-});
-
-// Sprawdź połączenie z API przy starcie
-async function checkAPI() {
-  try {
-    const health = await fetchAPI('/health');
-    console.log('API Status:', health);
-  } catch (error) {
-    console.error('API nie jest dostępne:', error);
-    const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = `
-      <p class="error">
-        Nie można połączyć się z API. Upewnij się, że backend działa na ${API_BASE_URL}
-      </p>
-    `;
-  }
-}
-
-// Inicjalizacja
 document.addEventListener('DOMContentLoaded', () => {
-  checkAPI();
-  loadItems();
-  
-  // Odświeżaj co 30 sekund
-  setInterval(loadItems, 30000);
-  
-  // Inicjalizacja parowania QR
-  initPairingQR();
+  overlay = document.getElementById('authOverlay');
+  pinValueEl = document.getElementById('authPinValue');
+  countdownEl = document.getElementById('authCountdown');
+  progressEl = document.getElementById('authProgress');
+  refreshBtn = document.getElementById('authRefresh');
+  openerBtn = document.querySelector('[data-auth-open]');
+  closeButtons = document.querySelectorAll('[data-auth-close]');
+
+  if (!overlay || !pinValueEl || !countdownEl || !progressEl || !openerBtn) {
+    return;
+  }
+
+  openerBtn.addEventListener('click', openOverlay);
+  closeButtons.forEach((button) => button.addEventListener('click', closeOverlay));
+
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      closeOverlay();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeOverlay();
+    }
+  });
+
+  refreshBtn?.addEventListener('click', issueNewCode);
 });
 
-// ========== System parowania QR code ==========
+function openOverlay() {
+  if (!overlay) return;
+  overlay.hidden = false;
+  overlay.classList.add('is-visible');
+  document.body.classList.add('overlay-open');
+  issueNewCode();
+}
 
-let currentPairingToken = null;
-let pairingStatusInterval = null;
+function closeOverlay() {
+  if (!overlay) return;
+  overlay.classList.remove('is-visible');
+  overlay.setAttribute('hidden', '');
+  document.body.classList.remove('overlay-open');
 
-function initPairingQR() {
-  const ctaButton = document.getElementById('ctaButton');
-  const topPairingButton = document.getElementById('topPairingButton');
-  const modal = document.getElementById('qrModal');
-  const closeBtn = document.querySelector('.close');
-  const copyPinBtn = document.getElementById('copyPinBtn');
-  
-  if (!modal) return;
-  
-  // Funkcja do otwierania modala
-  const openPairingModal = async () => {
-    await generatePairingQR();
-    modal.classList.add('show');
-  };
-  
-  // Otwórz modal po kliknięciu CTA w headerze
-  if (ctaButton) {
-    ctaButton.addEventListener('click', openPairingModal);
-  }
-  
-  // Otwórz modal po kliknięciu przycisku na górze
-  if (topPairingButton) {
-    topPairingButton.addEventListener('click', openPairingModal);
-  }
-  
-  // Zamknij modal
-  closeBtn.addEventListener('click', () => {
-    closePairingModal();
-  });
-  
-  // Zamknij modal po kliknięciu poza nim
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      closePairingModal();
-    }
-  });
-  
-  // Kopiuj PIN do schowka
-  if (copyPinBtn) {
-    copyPinBtn.addEventListener('click', () => {
-      const pinCode = document.getElementById('pinCode');
-      if (pinCode && pinCode.textContent !== '------') {
-        navigator.clipboard.writeText(pinCode.textContent).then(() => {
-          copyPinBtn.textContent = '✓ Skopiowano!';
-          copyPinBtn.classList.add('copied');
-          setTimeout(() => {
-            copyPinBtn.textContent = 'Kopiuj kod';
-            copyPinBtn.classList.remove('copied');
-          }, 2000);
-        }).catch(err => {
-          console.error('Failed to copy PIN:', err);
-          alert('Nie udało się skopiować kodu. Skopiuj ręcznie: ' + pinCode.textContent);
-        });
-      }
-    });
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
   }
 }
 
-async function generatePairingQR() {
-  const qrContainer = document.getElementById('qrContainer');
-  const pinCode = document.getElementById('pinCode');
-  const copyPinBtn = document.getElementById('copyPinBtn');
-  const qrStatus = document.getElementById('qrStatus');
-  const qrTimer = document.getElementById('qrTimer');
-  
-  qrContainer.innerHTML = '<div class="qr-loading">Generowanie kodu QR...</div>';
-  pinCode.textContent = '------';
-  copyPinBtn.style.display = 'none';
-  qrStatus.innerHTML = '';
-  qrTimer.innerHTML = '';
-  
-  try {
-    // Generuj nowy token parowania
-    const response = await fetchAPI('/api/pairing/generate', {
-      method: 'POST'
-    });
-    currentPairingToken = response.token;
-    const pin = response.pin;
-    
-    // Wyświetl 6-cyfrowy PIN
-    if (pinCode && pin) {
-      pinCode.textContent = pin;
-      copyPinBtn.style.display = 'inline-block';
-      copyPinBtn.classList.remove('copied');
-      copyPinBtn.textContent = 'Kopiuj kod';
-    }
-    
-    // Wyświetl QR code
-    const qrImage = document.createElement('img');
-    qrImage.src = `${API_BASE_URL}/api/pairing/qr/${currentPairingToken}`;
-    qrImage.alt = 'QR Code do parowania';
-    qrImage.onerror = () => {
-      qrContainer.innerHTML = `<p class="error">Błąd podczas ładowania obrazka QR. Spróbuj odświeżyć stronę lub użyj kodu PIN.</p>`;
-    };
-    qrImage.onload = () => {
-      qrContainer.innerHTML = '';
-      qrContainer.appendChild(qrImage);
-    };
-    qrContainer.innerHTML = '<div class="qr-loading">Ładowanie obrazka QR...</div>';
-    
-    // Ustaw status
-    qrStatus.innerHTML = '<div class="qr-status pending">Oczekiwanie na skanowanie QR lub wpisanie PIN...</div>';
-    qrStatus.className = 'qr-status pending';
-    
-    // Rozpocznij sprawdzanie statusu
-    startPairingStatusCheck();
-    
-  } catch (error) {
-    qrContainer.innerHTML = `<p class="error">Błąd podczas generowania QR: ${error.message}</p>`;
-    console.error('Error generating QR:', error);
-  }
+function issueNewCode() {
+  secondsRemaining = CODE_TTL_SECONDS;
+  pinValueEl.textContent = generatePin();
+  updateCountdownDisplay();
+  startCountdown();
 }
 
-function startPairingStatusCheck() {
-  // Sprawdzaj status co sekundę
-  if (pairingStatusInterval) {
-    clearInterval(pairingStatusInterval);
+function startCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
   }
-  
-  pairingStatusInterval = setInterval(async () => {
-    if (!currentPairingToken) return;
-    
-    try {
-      const status = await fetchAPI(`/api/pairing/status/${currentPairingToken}`);
-      
-      updatePairingStatus(status);
-      
-      // Jeśli potwierdzono lub wygasło, zatrzymaj sprawdzanie
-      if (status.status === 'confirmed' || status.status === 'expired') {
-        clearInterval(pairingStatusInterval);
-        
-        if (status.status === 'confirmed') {
-          // Parowanie zakończone sukcesem - pokaż custom alert z danymi urządzenia
-          setTimeout(() => {
-            showPairingSuccessAlert(status);
-            closePairingModal();
-          }, 1000);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking pairing status:', error);
-      if (error.message.includes('404') || error.message.includes('410')) {
-        clearInterval(pairingStatusInterval);
-        updatePairingStatus({ status: 'expired', remaining_seconds: 0 });
-      }
+
+  countdownInterval = setInterval(() => {
+    secondsRemaining = Math.max(secondsRemaining - 1, 0);
+    updateCountdownDisplay();
+
+    if (secondsRemaining === 0) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
     }
   }, 1000);
 }
 
-function updatePairingStatus(status) {
-  const qrStatus = document.getElementById('qrStatus');
-  const qrTimer = document.getElementById('qrTimer');
-  
-  if (!qrStatus || !qrTimer) return;
-  
-  // Aktualizuj status
-  if (status.status === 'pending') {
-    qrStatus.innerHTML = '<div class="qr-status pending">Oczekiwanie na skanowanie QR lub wpisanie PIN...</div>';
-    qrStatus.className = 'qr-status pending';
-  } else if (status.status === 'confirmed') {
-    const deviceInfo = status.device_name ? ` (${status.device_name})` : '';
-    qrStatus.innerHTML = `<div class="qr-status confirmed">✓ Parowanie potwierdzone${deviceInfo}</div>`;
-    qrStatus.className = 'qr-status confirmed';
-  } else if (status.status === 'expired') {
-    qrStatus.innerHTML = '<div class="qr-status expired">Kod wygasł. Wygeneruj nowy kod.</div>';
-    qrStatus.className = 'qr-status expired';
-  }
-  
-  // Aktualizuj timer
-  if (status.status === 'pending' && status.remaining_seconds !== undefined) {
-    const minutes = Math.floor(status.remaining_seconds / 60);
-    const seconds = status.remaining_seconds % 60;
-    const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    
-    qrTimer.textContent = `Pozostało czasu: ${timeString}`;
-    qrTimer.className = 'qr-timer';
-    
-    // Ostrzeżenie gdy mniej niż 1 minuta
-    if (status.remaining_seconds < 60) {
-      qrTimer.classList.add('warning');
-    }
-    
-    if (status.remaining_seconds <= 0) {
-      qrTimer.textContent = 'Kod wygasł';
-      qrTimer.classList.add('expired');
-    }
-  } else if (status.status === 'expired') {
-    qrTimer.textContent = 'Kod wygasł';
-    qrTimer.className = 'qr-timer expired';
-  } else {
-    qrTimer.textContent = '';
-  }
+function updateCountdownDisplay() {
+  if (!countdownEl || !progressEl) return;
+  countdownEl.textContent = formatTime(secondsRemaining);
+  const progress = secondsRemaining / CODE_TTL_SECONDS;
+  progressEl.style.transform = `scaleX(${progress})`;
 }
 
-function closePairingModal() {
-  const modal = document.getElementById('qrModal');
-  if (modal) {
-    modal.classList.remove('show');
-  }
-  
-  // Zatrzymaj sprawdzanie statusu
-  if (pairingStatusInterval) {
-    clearInterval(pairingStatusInterval);
-    pairingStatusInterval = null;
-  }
-  
-  currentPairingToken = null;
-  
-  // Wyczyść zawartość
-  const qrContainer = document.getElementById('qrContainer');
-  const pinCode = document.getElementById('pinCode');
-  const copyPinBtn = document.getElementById('copyPinBtn');
-  const qrStatus = document.getElementById('qrStatus');
-  const qrTimer = document.getElementById('qrTimer');
-  
-  if (qrContainer) qrContainer.innerHTML = '';
-  if (pinCode) pinCode.textContent = '------';
-  if (copyPinBtn) {
-    copyPinBtn.style.display = 'none';
-    copyPinBtn.classList.remove('copied');
-    copyPinBtn.textContent = 'Kopiuj kod';
-  }
-  if (qrStatus) {
-    qrStatus.innerHTML = '';
-    qrStatus.className = '';
-  }
-  if (qrTimer) {
-    qrTimer.textContent = '';
-    qrTimer.className = '';
-  }
+function formatTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Funkcja do pokazania custom alertu sukcesu parowania
-function showPairingSuccessAlert(status) {
-  const alert = document.getElementById('pairingAlert');
-  const alertMessage = document.getElementById('pairingAlertMessage');
-  const alertClose = document.getElementById('pairingAlertClose');
-  
-  if (!alert || !alertMessage || !alertClose) return;
-  
-  // Przygotuj wiadomość z danymi urządzenia
-  let message = 'Aplikacja mobilna została połączona.';
-  if (status.device_name) {
-    message += `<br><br><strong>Urządzenie:</strong> ${status.device_name}`;
-  }
-  if (status.device_id) {
-    message += `<br><strong>ID urządzenia:</strong> <code style="background: rgba(0, 102, 204, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">${status.device_id}</code>`;
-  }
-  
-  alertMessage.innerHTML = message;
-  
-  // Pokaż alert
-  alert.classList.add('show');
-  
-  // Zamknij alert po kliknięciu przycisku
-  alertClose.onclick = () => {
-    alert.classList.remove('show');
-  };
-  
-  // Zamknij alert po kliknięciu poza nim
-  alert.onclick = (e) => {
-    if (e.target === alert) {
-      alert.classList.remove('show');
-    }
-  };
+function generatePin() {
+  return Math.floor(100000 + Math.random() * 900000);
 }
 
