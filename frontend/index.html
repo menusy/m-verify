@@ -109,6 +109,7 @@
               hidden
             />
           </div>
+          <p class="auth-qr__status" id="authQrStatus" aria-live="polite"></p>
         </div>
 
         <div class="auth-pin">
@@ -128,6 +129,29 @@
             <button type="button" class="link-button" data-auth-close>Zamknij</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal wygaśnięcia kodu -->
+  <div id="codeExpiredModal" class="expired-modal" role="dialog" aria-modal="true" aria-labelledby="expiredModalTitle" hidden>
+    <div class="expired-modal__overlay"></div>
+    <div class="expired-modal__content">
+      <div class="expired-modal__icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h3 id="expiredModalTitle" class="expired-modal__title">Kod wygasł</h3>
+      <p class="expired-modal__message">Kod weryfikacyjny wygasł. Wygeneruj nowy kod, aby kontynuować weryfikację.</p>
+      <div class="expired-modal__actions">
+        <button type="button" id="expiredModalRefresh" class="expired-modal__button expired-modal__button--primary">
+          Odśwież kod
+        </button>
+        <button type="button" id="expiredModalClose" class="expired-modal__button expired-modal__button--secondary">
+          Zamknij
+        </button>
       </div>
     </div>
   </div>

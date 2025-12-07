@@ -22,6 +22,10 @@ body.overlay-open {
   overflow: hidden;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 .hero-background {
   position: fixed;
   inset: 0;
@@ -186,38 +190,133 @@ body.overlay-open .authenticity-trigger {
   text-align: center;
 }
 
-.auth-qr__expired {
-  width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.85rem 1rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(7, 16, 34, 0.85);
+/* Modal wygaśnięcia kodu */
+.expired-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  padding: 1.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.expired-modal:not([hidden]) {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.expired-modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 11, 25, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.expired-modal__content {
+  position: relative;
+  background: rgba(9, 24, 54, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
   text-align: center;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
 }
 
-.auth-qr__expired p {
-  margin: 0;
-  font-size: 0.9rem;
+.expired-modal:not([hidden]) .expired-modal__content {
+  transform: scale(1);
 }
 
-.auth-qr__expired-hint {
-  color: rgba(255, 255, 255, 0.7);
+.expired-modal__icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  color: #ffb3b3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.auth-qr__expired button {
+.expired-modal__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.expired-modal__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.expired-modal__message {
+  margin: 0 0 2rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.expired-modal__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-direction: column;
+}
+
+.expired-modal__button {
   border: none;
   border-radius: 12px;
-  padding: 0.65rem 1.5rem;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+}
+
+.expired-modal__button:hover {
+  transform: translateY(-2px);
+}
+
+.expired-modal__button:active {
+  transform: translateY(0);
+}
+
+.expired-modal__button--primary {
   background: #fff;
   color: var(--blue-dark);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+}
+
+.expired-modal__button--primary:hover {
+  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.3);
+}
+
+.expired-modal__button--secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.expired-modal__button--secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@media (min-width: 480px) {
+  .expired-modal__actions {
+    flex-direction: row;
+  }
+  
+  .expired-modal__button {
+    flex: 1;
+  }
 }
 
 .auth-qr__status[data-state="error"] {

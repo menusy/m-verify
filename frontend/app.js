@@ -33,8 +33,9 @@ let openerBtn;
 let closeButtons;
 let qrImageEl;
 let qrStatusEl;
-let qrExpiredEl;
-let qrOverlayRefreshBtn;
+let codeExpiredModal;
+let expiredModalRefreshBtn;
+let expiredModalCloseBtn;
 let qrPlaceholderEl;
 let countdownInterval = null;
 let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
@@ -122,8 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
   closeButtons = document.querySelectorAll('[data-auth-close]');
   qrImageEl = document.getElementById('authQrImage');
   qrStatusEl = document.getElementById('authQrStatus');
-  qrExpiredEl = document.getElementById('authQrExpired');
-  qrOverlayRefreshBtn = document.getElementById('authQrOverlayRefresh');
+  codeExpiredModal = document.getElementById('codeExpiredModal');
+  expiredModalRefreshBtn = document.getElementById('expiredModalRefresh');
+  expiredModalCloseBtn = document.getElementById('expiredModalClose');
   qrPlaceholderEl = document.getElementById('authQrPlaceholder');
 
   console.log('Elements found:', {
@@ -153,7 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      closeOverlay();
+      // Najpierw zamknij modal wygaśnięcia, jeśli jest otwarty
+      if (codeExpiredModal && !codeExpiredModal.hasAttribute('hidden')) {
+        closeExpiredModal();
+      } else {
+        closeOverlay();
+      }
     }
   });
 
@@ -167,16 +174,32 @@ document.addEventListener('DOMContentLoaded', () => {
     void issueNewCode();
   });
 
-  qrOverlayRefreshBtn?.addEventListener('click', () => {
+  expiredModalRefreshBtn?.addEventListener('click', () => {
     if (isFetchingCode) return;
+    closeExpiredModal();
     void issueNewCode();
+  });
+
+  expiredModalCloseBtn?.addEventListener('click', () => {
+    closeExpiredModal();
+  });
+
+  // Zamknij modal przy kliknięciu w overlay
+  codeExpiredModal?.addEventListener('click', (event) => {
+    if (event.target === codeExpiredModal || event.target.classList.contains('expired-modal__overlay')) {
+      closeExpiredModal();
+    }
+  });
+
+  // Zamknij modal przy naciśnięciu Escape
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && codeExpiredModal && !codeExpiredModal.hasAttribute('hidden')) {
+      closeExpiredModal();
+    }
   });
 
   // Sprawdź cookie weryfikacji przy ładowaniu strony
   checkVerificationCookie();
-  
-  // Sprawdź status domeny przy ładowaniu strony
-  void verifyDomainStatus();
 });
 
 function openOverlay() {
@@ -463,15 +486,20 @@ function handleQrImageError() {
 }
 
 function setQrExpiredState(isExpired) {
-  if (!qrExpiredEl) return;
+  if (!codeExpiredModal) return;
 
   if (isExpired) {
-    qrExpiredEl.removeAttribute('hidden');
-    qrImageEl?.setAttribute('hidden', '');
-    qrPlaceholderEl?.setAttribute('hidden', '');
+    codeExpiredModal.removeAttribute('hidden');
+    // Zapobiegaj scrollowaniu body gdy modal jest otwarty
+    document.body.classList.add('modal-open');
   } else {
-    qrExpiredEl.setAttribute('hidden', '');
+    codeExpiredModal.setAttribute('hidden', '');
+    document.body.classList.remove('modal-open');
   }
+}
+
+function closeExpiredModal() {
+  setQrExpiredState(false);
 }
 
 function handleRefreshThreshold(currentSeconds) {
@@ -484,8 +512,8 @@ function handleCodeExpired() {
   resetCountdown();
   stopStatusPolling();
   setQrExpiredState(true);
-  setRefreshButtonVisibility(true);
-  setQrStatus('Kod wygasł. Odśwież, aby wygenerować nowy.');
+  setRefreshButtonVisibility(false); // Przycisk jest teraz w modalu
+  setQrStatus('Kod wygasł. Kliknij "Odśwież kod" w oknie dialogowym.');
 }
 
 function startStatusPolling(token) {
@@ -627,75 +655,5 @@ function buildApiUrl(path) {
   const fullUrl = `${API_BASE_URL}${normalizedPath}`;
   console.log('buildApiUrl:', { path, API_BASE_URL, fullUrl });
   return fullUrl;
-}
-
-async function verifyDomainStatus() {
-  const securityPanel = document.getElementById('securityInfoPanel');
-  const domainNameEl = document.getElementById('domainName');
-  const domainStatusEl = document.getElementById('domainStatus');
-  const domainStatusIconEl = document.getElementById('domainStatusIcon');
-  const connectionStatusEl = document.getElementById('httpsStatus');
-  const trustScoreEl = document.getElementById('trustScore');
-  
-  if (!securityPanel) {
-    console.warn('Security panel not found');
-    return;
-  }
-  
-  // Sprawdź HTTPS
-  const isHttps = window.location.protocol === 'https:';
-  connectionStatusEl.textContent = isHttps ? 'Aktywne' : 'Nieaktywne';
-  
-  // Pobierz hostname
-  const hostname = window.location.hostname;
-  domainNameEl.textContent = hostname;
-  
-  // Pokaż panel
-  securityPanel.hidden = false;
-  securityPanel.removeAttribute('hidden');
-  
-  // Ustaw status "sprawdzanie"
-  domainStatusEl.textContent = 'Sprawdzanie...';
-  domainStatusEl.className = 'security-status checking';
-  domainStatusIconEl.textContent = '🔍';
-  trustScoreEl.textContent = '-';
-  
-  try {
-    const domain = hostname;
-    const apiUrl = buildApiUrl(`/api/domain/verify?domain=${encodeURIComponent(domain)}`);
-    
-    const response = await fetch(apiUrl);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Aktualizuj status domeny
-    if (data.is_official) {
-      domainStatusEl.textContent = 'Zweryfikowana';
-      domainStatusEl.className = 'security-status verified';
-      domainStatusIconEl.textContent = '✓';
-      trustScoreEl.textContent = `${data.trust_score}%`;
-    } else {
-      domainStatusEl.textContent = 'Niezweryfikowana';
-      domainStatusEl.className = 'security-status unverified';
-      domainStatusIconEl.textContent = '⚠️';
-      trustScoreEl.textContent = `${data.trust_score}%`;
-    }
-    
-    // Aktualizuj nazwę domeny jeśli została znormalizowana
-    if (data.domain && data.domain !== hostname) {
-      domainNameEl.textContent = data.domain;
-    }
-    
-  } catch (error) {
-    console.error('Error verifying domain:', error);
-    domainStatusEl.textContent = 'Błąd sprawdzania';
-    domainStatusEl.className = 'security-status unverified';
-    domainStatusIconEl.textContent = '⚠️';
-    trustScoreEl.textContent = '-';
-  }
 }
 
