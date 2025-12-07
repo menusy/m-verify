@@ -70,8 +70,8 @@ body.overlay-open {
 }
 
 .verification-cookie-icon {
-  width: 16px;
-  height: 16px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   display: inline-block;
   vertical-align: middle;

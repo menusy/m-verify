@@ -260,6 +260,8 @@ async function issueNewCode() {
 
     // Wywołaj updateQrImage z walidacją
     console.log('Calling updateQrImage with token:', currentToken.substring(0, 20) + '...');
+    // Upewnij się, że komunikat wygaśnięcia jest ukryty przed pokazaniem QR
+    setQrExpiredState(false);
     updateQrImage(currentToken);
     setQrStatus('Zeskanuj kod w aplikacji mObywatel.');
     startStatusPolling(currentToken);
@@ -279,15 +281,14 @@ function startCountdown() {
     clearInterval(countdownInterval);
   }
 
-  handleRefreshThreshold(secondsRemaining);
   countdownInterval = setInterval(() => {
     secondsRemaining = Math.max(secondsRemaining - 1, 0);
     updateCountdownDisplay();
-    handleRefreshThreshold(secondsRemaining);
 
-    if (secondsRemaining === 0) {
-      handleCodeExpired();
-    }
+    // Gdy countdown dojdzie do 00:00, nie pokazuj od razu komunikatu
+    // Pozwól API polling sprawdzić rzeczywisty status kodu
+    // Komunikat pojawi się tylko gdy API potwierdzi wygaśnięcie (status "expired")
+    // Nie wywołuj handleRefreshThreshold - przycisk pokaże się tylko gdy kod wygasł
   }, 1000);
 }
 
@@ -460,16 +461,9 @@ function setQrExpiredState(isExpired) {
 }
 
 function handleRefreshThreshold(currentSeconds) {
-  if (currentSeconds <= 0) {
-    setRefreshButtonVisibility(true);
-    return;
-  }
-
-  if (currentSeconds <= REFRESH_WARNING_THRESHOLD_SECONDS) {
-    setRefreshButtonVisibility(true);
-  } else {
-    setRefreshButtonVisibility(false);
-  }
+  // Nie pokazuj przycisku przedwcześnie - tylko gdy kod rzeczywiście wygasł
+  // Przycisk pokaże się tylko gdy handleCodeExpired() zostanie wywołane
+  setRefreshButtonVisibility(false);
 }
 
 function handleCodeExpired() {
@@ -501,22 +495,30 @@ async function fetchPairingStatus(token) {
   try {
     const response = await fetch(statusUrl);
     if (!response.ok) {
+      // Tylko gdy API wyraźnie zwraca 404 lub 410 (kod nie istnieje lub wygasł)
       if (response.status === 404 || response.status === 410) {
         handleCodeExpired();
         return;
       }
-      throw new Error(`Status request failed with ${response.status}`);
+      // Dla innych błędów (500, timeout, itp.) nie pokazuj komunikatu wygaśnięcia
+      // Kod może być nadal aktywny, tylko wystąpił błąd serwera
+      console.error(`Status request failed with ${response.status}`);
+      return;
     }
     const data = await response.json();
     handlePairingStatusResponse(data);
   } catch (error) {
+    // Błąd sieciowy - nie pokazuj komunikatu wygaśnięcia
+    // Kod może być nadal aktywny, tylko wystąpił problem z połączeniem
     console.error('Failed to fetch pairing status', error);
+    // Nie wywołuj handleCodeExpired() - kod może być nadal aktywny
   }
 }
 
 function handlePairingStatusResponse(data) {
   if (!data) return;
-  const { status, verification_result: verificationResult } = data;
+  const { status, verification_result: verificationResult, remaining_seconds } = data;
+  
   if (status === 'confirmed') {
     const successMessage =
       verificationResult?.message ?? 'Autoryzacja przebiegła poprawnie.';
@@ -530,10 +532,47 @@ function handlePairingStatusResponse(data) {
     saveVerificationStatus();
     return;
   }
+  
+  // Sprawdź czy kod rzeczywiście wygasł - tylko gdy status jest "expired"
   if (status === 'expired') {
     handleCodeExpired();
     return;
   }
+  
+  // Jeśli kod jest aktywny (status "pending"), upewnij się, że komunikat wygaśnięcia jest ukryty
+  if (status === 'pending') {
+    // WAŻNE: Ukryj komunikat wygaśnięcia jeśli kod jest jeszcze aktywny
+    setQrExpiredState(false);
+    setRefreshButtonVisibility(false); // Ukryj przycisk gdy kod jest aktywny
+    
+    // Zsynchronizuj countdown z rzeczywistym czasem z API jeśli jest dostępny
+    if (remaining_seconds !== undefined && remaining_seconds !== null) {
+      const apiSeconds = Math.max(0, Math.floor(remaining_seconds));
+      // Tylko aktualizuj jeśli kod jest nadal aktywny (remaining_seconds > 0)
+      if (apiSeconds > 0) {
+        secondsRemaining = apiSeconds;
+        updateCountdownDisplay();
+        // Upewnij się, że countdown działa
+        if (!countdownInterval) {
+          startCountdown();
+        }
+      } else if (apiSeconds <= 0) {
+        // Jeśli remaining_seconds <= 0, ale status jest nadal "pending",
+        // to znaczy że kod może być na granicy wygaśnięcia
+        // Nie pokazuj jeszcze komunikatu - poczekaj aż API potwierdzi status "expired"
+        // Zatrzymaj countdown, ale nie pokazuj komunikatu
+        secondsRemaining = 0;
+        updateCountdownDisplay();
+        // Nie resetuj countdown - poczekaj na potwierdzenie z API
+      }
+    }
+    setQrStatus('Oczekiwanie na potwierdzenie w aplikacji mObywatel...', 'pending');
+    return;
+  }
+  
+  // Dla innych statusów również ukryj komunikat wygaśnięcia (kod jest aktywny)
+  setQrExpiredState(false);
+  setRefreshButtonVisibility(false);
   setQrStatus('Oczekiwanie na potwierdzenie w aplikacji mObywatel...', 'pending');
 }
 
