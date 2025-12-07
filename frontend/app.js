@@ -1,6 +1,8 @@
 const DEFAULT_CODE_TTL_SECONDS = 120;
 const REFRESH_WARNING_THRESHOLD_SECONDS = 30;
 const STATUS_POLL_INTERVAL_MS = 3000;
+const VERIFICATION_COOKIE_NAME = 'gov_verification_status';
+const VERIFICATION_COOKIE_EXPIRY_DAYS = 365; // Cookie ważne przez rok
 const API_BASE_URL = (() => {
   // Sprawdź zmienną środowiskową
   const base = import.meta?.env?.VITE_API_BASE_URL ?? '';
@@ -41,6 +43,72 @@ let currentToken = null;
 let isFetchingCode = false;
 let statusPollingInterval = null;
 let hasShownSuccessNotification = false;
+let cookieImageEl = null;
+
+// Funkcje do obsługi cookies
+function setCookie(name, value, days) {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+}
+
+function getCookie(name) {
+  const nameEQ = name + '=';
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+}
+
+function saveVerificationStatus() {
+  const timestamp = Date.now();
+  setCookie(VERIFICATION_COOKIE_NAME, 'verified', VERIFICATION_COOKIE_EXPIRY_DAYS);
+  showCookieImage();
+}
+
+function checkVerificationCookie() {
+  const verificationStatus = getCookie(VERIFICATION_COOKIE_NAME);
+  if (verificationStatus === 'verified') {
+    showCookieImage();
+  }
+}
+
+function showCookieImage() {
+  const cookieIcon = document.getElementById('verificationCookieIcon');
+  const cookieIconModal = document.getElementById('verificationCookieIconModal');
+  
+  if (cookieIcon) {
+    cookieIcon.hidden = false;
+    cookieIcon.removeAttribute('hidden');
+  }
+  
+  if (cookieIconModal) {
+    cookieIconModal.hidden = false;
+    cookieIconModal.removeAttribute('hidden');
+  }
+}
+
+function hideCookieImage() {
+  const cookieIcon = document.getElementById('verificationCookieIcon');
+  const cookieIconModal = document.getElementById('verificationCookieIconModal');
+  
+  if (cookieIcon) {
+    cookieIcon.hidden = true;
+    cookieIcon.setAttribute('hidden', '');
+  }
+  
+  if (cookieIconModal) {
+    cookieIconModal.hidden = true;
+    cookieIconModal.setAttribute('hidden', '');
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded - initializing...');
@@ -103,6 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isFetchingCode) return;
     void issueNewCode();
   });
+
+  // Sprawdź cookie weryfikacji przy ładowaniu strony
+  checkVerificationCookie();
 });
 
 function openOverlay() {
@@ -455,6 +526,8 @@ function handlePairingStatusResponse(data) {
     notifyBrowserSuccess(successMessage);
     stopStatusPolling();
     resetCountdown();
+    // Zapisz status weryfikacji w cookie
+    saveVerificationStatus();
     return;
   }
   if (status === 'expired') {

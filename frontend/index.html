@@ -19,14 +19,36 @@
   </div>
 
   <button class="authenticity-trigger" type="button" data-auth-open>
-    <span>Nie ufasz tej stronie?</span>
+    <span>
+      Nie ufasz tej stronie?
+      <img 
+        id="verificationCookieIcon" 
+        src="/assets/choc.jpg" 
+        alt="" 
+        class="verification-cookie-icon"
+        hidden
+        width="16"
+        height="16"
+      />
+    </span>
     Zweryfikuj, czy jest oficjalna!
   </button>
 
   <div id="authOverlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="authTitle" hidden>
     <div class="auth-card">
       <button class="auth-card__close" type="button" aria-label="Zamknij okno" data-auth-close>&times;</button>
-      <p class="auth-card__eyebrow">Nie ufasz tej stronie?</p>
+      <p class="auth-card__eyebrow">
+        Nie ufasz tej stronie?
+        <img 
+          id="verificationCookieIconModal" 
+          src="/assets/choc.jpg" 
+          alt="" 
+          class="verification-cookie-icon"
+          hidden
+          width="16"
+          height="16"
+        />
+      </p>
       <h2 id="authTitle">Zweryfikuj autentyczność jednym skanem</h2>
       <p class="auth-card__subtitle">
         Zeskanuj kod w aplikacji mObywatel, aby mieć pewność, że jesteś na oficjalnej stronie gov.pl.
