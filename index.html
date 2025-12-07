@@ -56,6 +56,11 @@
               loading="lazy"
               hidden
             />
+            <div id="authQrExpired" class="auth-qr__expired" hidden>
+              <p>Kod wygasł</p>
+              <p class="auth-qr__expired-hint">Odśwież, aby wygenerować nowy.</p>
+              <button type="button" id="authQrOverlayRefresh">Odśwież kod</button>
+            </div>
           </div>
           <p class="auth-qr__status" id="authQrStatus" aria-live="polite"></p>
         </div>
@@ -73,7 +78,7 @@
             Kod pozostaje aktywny przez kilka minut. Zeskanuj go w aplikacji mObywatel.
           </p>
           <div class="auth-pin__actions">
-            <button type="button" id="authRefresh">Odśwież kod</button>
+            <button type="button" id="authRefresh" hidden>Odśwież kod</button>
             <button type="button" class="link-button" data-auth-close>Zamknij</button>
           </div>
         </div>

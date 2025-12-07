@@ -1,6 +1,7 @@
 import './styles.css';
 
 const DEFAULT_CODE_TTL_SECONDS = 120;
+const REFRESH_WARNING_THRESHOLD_SECONDS = 30;
 const API_BASE_URL = (() => {
   // Sprawdź zmienną środowiskową
   const base = import.meta?.env?.VITE_API_BASE_URL ?? '';
@@ -32,6 +33,8 @@ let closeButtons;
 let qrImageEl;
 let qrPlaceholderEl;
 let qrStatusEl;
+let qrExpiredEl;
+let qrOverlayRefreshBtn;
 let countdownInterval = null;
 let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
 let currentCodeTtlSeconds = DEFAULT_CODE_TTL_SECONDS;
@@ -49,6 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
   qrImageEl = document.getElementById('authQrImage');
   qrPlaceholderEl = document.getElementById('authQrPlaceholder');
   qrStatusEl = document.getElementById('authQrStatus');
+  qrExpiredEl = document.getElementById('authQrExpired');
+  qrOverlayRefreshBtn = document.getElementById('authQrOverlayRefresh');
 
   if (!overlay || !pinValueEl || !countdownEl || !progressEl || !openerBtn) {
     return;
@@ -78,6 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isFetchingCode) return;
     void issueNewCode();
   });
+
+  qrOverlayRefreshBtn?.addEventListener('click', () => {
+    if (isFetchingCode) return;
+    void issueNewCode();
+  });
 });
 
 function openOverlay() {
@@ -100,6 +110,8 @@ async function issueNewCode() {
   if (isFetchingCode) return;
   isFetchingCode = true;
   toggleRefreshButton(true);
+  setRefreshButtonVisibility(false);
+  setQrExpiredState(false);
   setQrStatus('Trwa generowanie kodu...');
   setQrLoadingState(true);
   setPinValue('------');
@@ -119,7 +131,10 @@ async function issueNewCode() {
 
     const data = await response.json();
     currentToken = data.token ?? null;
-    currentCodeTtlSeconds = Number.parseInt(data.expires_in_seconds, 10) || DEFAULT_CODE_TTL_SECONDS;
+    const apiTtl = Number.parseInt(data.expires_in_seconds, 10);
+    currentCodeTtlSeconds = Number.isFinite(apiTtl)
+      ? Math.min(apiTtl, DEFAULT_CODE_TTL_SECONDS)
+      : DEFAULT_CODE_TTL_SECONDS;
     secondsRemaining = currentCodeTtlSeconds;
 
     setPinValue(data.pin ?? '------');
@@ -142,12 +157,14 @@ function startCountdown() {
     clearInterval(countdownInterval);
   }
 
+  handleRefreshThreshold(secondsRemaining);
   countdownInterval = setInterval(() => {
     secondsRemaining = Math.max(secondsRemaining - 1, 0);
     updateCountdownDisplay();
+    handleRefreshThreshold(secondsRemaining);
 
     if (secondsRemaining === 0) {
-      resetCountdown();
+      handleCodeExpired();
     }
   }, 1000);
 }
@@ -178,6 +195,15 @@ function formatTime(totalSeconds) {
 function setPinValue(value) {
   if (!pinValueEl) return;
   pinValueEl.textContent = value;
+}
+
+function setRefreshButtonVisibility(shouldShow) {
+  if (!refreshBtn) return;
+  if (shouldShow) {
+    refreshBtn.removeAttribute('hidden');
+  } else {
+    refreshBtn.setAttribute('hidden', '');
+  }
 }
 
 function toggleRefreshButton(isDisabled) {
@@ -213,6 +239,7 @@ function updateQrImage(token) {
   const url = `${buildApiUrl(`/api/pairing/qr/${encodeURIComponent(token)}`)}?t=${Date.now()}`;
   qrImageEl.hidden = true;
   qrPlaceholderEl?.removeAttribute('hidden');
+  setQrExpiredState(false);
   qrImageEl.src = url;
 }
 
@@ -227,6 +254,38 @@ function handleQrImageError() {
   qrImageEl.hidden = true;
   qrPlaceholderEl?.removeAttribute('hidden');
   setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', true);
+}
+
+function setQrExpiredState(isExpired) {
+  if (!qrExpiredEl) return;
+
+  if (isExpired) {
+    qrExpiredEl.removeAttribute('hidden');
+    qrImageEl?.setAttribute('hidden', '');
+    qrPlaceholderEl?.setAttribute('hidden', '');
+  } else {
+    qrExpiredEl.setAttribute('hidden', '');
+  }
+}
+
+function handleRefreshThreshold(currentSeconds) {
+  if (currentSeconds <= 0) {
+    setRefreshButtonVisibility(true);
+    return;
+  }
+
+  if (currentSeconds <= REFRESH_WARNING_THRESHOLD_SECONDS) {
+    setRefreshButtonVisibility(true);
+  } else {
+    setRefreshButtonVisibility(false);
+  }
+}
+
+function handleCodeExpired() {
+  resetCountdown();
+  setQrExpiredState(true);
+  setRefreshButtonVisibility(true);
+  setQrStatus('Kod wygasł. Odśwież, aby wygenerować nowy.');
 }
 
 function buildApiUrl(path) {
