@@ -26,6 +26,15 @@ const API_BASE_URL = (() => {
   return '';
 })();
 
+const TRUST_PANEL_STATUS_DEFAULT = 'Nie udało się pobrać statusu zaufania.';
+const TRUST_PANEL_STATUS_VERIFIED = 'Ta domena została zweryfikowana przez aplikację mObywatel.';
+const TRUST_PANEL_HINT_DEFAULT =
+  'To wygląda jak oficjalna strona, ale nie została jeszcze zweryfikowana na Twoim urządzeniu. Aby mieć pewność, zeskanuj kod QR w aplikacji mObywatel.';
+const TRUST_PANEL_HINT_VERIFIED =
+  'Możesz kontynuować korzystanie z tej strony lub zeskanować kod ponownie, jeśli chcesz odświeżyć swój znak zaufania.';
+const TRUST_PANEL_BADGE_PLACEHOLDER = '[Znak zaufania pojawi się tutaj po weryfikacji]';
+const TRUST_PANEL_BADGE_VERIFIED = '✓ Zweryfikowano w mObywatel';
+
 let overlay;
 let pinValueEl;
 let countdownEl;
@@ -48,6 +57,12 @@ let isFetchingCode = false;
 let statusPollingInterval = null;
 let hasShownSuccessNotification = false;
 let cookieImageEl = null;
+let trustPanelDomainEl = null;
+let trustPanelBadgeEl = null;
+let trustPanelBadgeLabelEl = null;
+let trustPanelStatusEl = null;
+let trustPanelHintEl = null;
+let trustPanelHostnameInlineEl = null;
 
 // Funkcje do obsługi cookies
 function setCookie(name, value, days) {
@@ -75,13 +90,17 @@ function saveVerificationStatus() {
   const timestamp = Date.now();
   setCookie(VERIFICATION_COOKIE_NAME, 'verified', VERIFICATION_COOKIE_EXPIRY_DAYS);
   showCookieImage();
+  setTrustPanelState('verified');
 }
 
 function checkVerificationCookie() {
   const verificationStatus = getCookie(VERIFICATION_COOKIE_NAME);
   if (verificationStatus === 'verified') {
     showCookieImage();
+    setTrustPanelState('verified');
+    return;
   }
+  setTrustPanelState('unverified');
 }
 
 function showCookieImage() {
@@ -114,6 +133,61 @@ function hideCookieImage() {
   }
 }
 
+function initTrustPanelCopy() {
+  if (
+    !trustPanelDomainEl &&
+    !trustPanelBadgeEl &&
+    !trustPanelBadgeLabelEl &&
+    !trustPanelStatusEl &&
+    !trustPanelHintEl &&
+    !trustPanelHostnameInlineEl
+  ) {
+    return;
+  }
+  updateTrustPanelDomain();
+  setTrustPanelState('unverified');
+}
+
+function updateTrustPanelDomain() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const hostname = window.location.hostname || 'twojej domenie';
+  const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
+  if (trustPanelDomainEl) {
+    trustPanelDomainEl.textContent = `${protocol}${hostname}`;
+  }
+  if (trustPanelHostnameInlineEl) {
+    trustPanelHostnameInlineEl.textContent = hostname;
+  }
+}
+
+function setTrustPanelState(state) {
+  if (!trustPanelBadgeEl && !trustPanelStatusEl && !trustPanelHintEl && !trustPanelBadgeLabelEl) {
+    return;
+  }
+  const isVerified = state === 'verified';
+  if (trustPanelBadgeEl) {
+    trustPanelBadgeEl.classList.toggle('auth-trust-panel__badge--verified', isVerified);
+  }
+  if (trustPanelBadgeLabelEl) {
+    trustPanelBadgeLabelEl.textContent = isVerified
+      ? TRUST_PANEL_BADGE_VERIFIED
+      : TRUST_PANEL_BADGE_PLACEHOLDER;
+  }
+  if (trustPanelStatusEl) {
+    trustPanelStatusEl.textContent = isVerified
+      ? TRUST_PANEL_STATUS_VERIFIED
+      : TRUST_PANEL_STATUS_DEFAULT;
+    trustPanelStatusEl.classList.toggle('auth-trust-panel__status--verified', isVerified);
+  }
+  if (trustPanelHintEl) {
+    trustPanelHintEl.textContent = isVerified
+      ? TRUST_PANEL_HINT_VERIFIED
+      : TRUST_PANEL_HINT_DEFAULT;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded - initializing...');
   initTrustWidget();
@@ -132,6 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
   expiredModalCloseBtn = document.getElementById('expiredModalClose');
   qrPlaceholderEl = document.getElementById('authQrPlaceholder');
   securityInfoFab = document.getElementById('securityInfoFab');
+  trustPanelDomainEl = document.getElementById('authTrustDomain');
+  trustPanelBadgeEl = document.getElementById('authTrustBadge');
+  trustPanelBadgeLabelEl = document.getElementById('authTrustBadgeLabel');
+  trustPanelStatusEl = document.getElementById('authTrustStatus');
+  trustPanelHintEl = document.getElementById('authTrustHint');
+  trustPanelHostnameInlineEl = document.getElementById('authTrustHostnameInline');
 
   console.log('Elements found:', {
     overlay: !!overlay,
@@ -142,6 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
     qrImageEl: !!qrImageEl,
     qrStatusEl: !!qrStatusEl,
     securityInfoFab: !!securityInfoFab,
+    trustPanelDomainEl: !!trustPanelDomainEl,
+    trustPanelBadgeEl: !!trustPanelBadgeEl,
     API_BASE_URL: API_BASE_URL
   });
 
@@ -198,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   // Sprawdź cookie weryfikacji przy ładowaniu strony
+  initTrustPanelCopy();
   checkVerificationCookie();
   // Przygotuj dane modułu bezpieczeństwa (bez pokazywania)
   initSecurityPanel();

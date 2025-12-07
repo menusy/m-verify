@@ -147,6 +147,47 @@
           </div>
         </div>
       </div>
+
+      <div class="auth-trust-panel" aria-live="polite">
+        <div class="auth-trust-panel__header">
+          <p class="auth-trust-panel__eyebrow">Mechanizm zaufania gov.pl</p>
+          <h3 class="auth-trust-panel__title">Sprawdź, czy ta strona jest prawdziwa</h3>
+          <p class="auth-trust-panel__domain">
+            Jesteś na <span id="authTrustDomain">https://m-verify.vercel.app</span>
+          </p>
+        </div>
+
+        <div class="auth-trust-panel__body">
+          <div class="auth-trust-panel__badge" id="authTrustBadge">
+            <span class="auth-trust-panel__badge-label" id="authTrustBadgeLabel">
+              [Znak zaufania pojawi się tutaj po weryfikacji]
+            </span>
+          </div>
+          <div class="auth-trust-panel__messages">
+            <p class="auth-trust-panel__status" id="authTrustStatus">
+              Nie udało się pobrać statusu zaufania.
+            </p>
+            <p class="auth-trust-panel__hint" id="authTrustHint">
+              To wygląda jak oficjalna strona, ale nie została jeszcze zweryfikowana na Twoim urządzeniu.
+              Aby mieć pewność, zeskanuj kod QR w aplikacji mObywatel.
+            </p>
+          </div>
+        </div>
+
+        <div class="auth-trust-panel__steps">
+          <h4>Jak to działa?</h4>
+          <ol>
+            <li>Zeskanuj kod QR w aplikacji mObywatel.</li>
+            <li>
+              Potwierdź, że chcesz zaufać domenie
+              <span id="authTrustHostnameInline">m-verify.vercel.app</span>.
+            </li>
+            <li>
+              Po potwierdzeniu pokażemy Twój znak zaufania razem z historią ostatniej weryfikacji.
+            </li>
+          </ol>
+        </div>
+      </div>
     </div>
   </div>
 

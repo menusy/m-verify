@@ -281,6 +281,114 @@ body.overlay-open .authenticity-trigger {
   color: rgba(255, 255, 255, 0.8);
 }
 
+.auth-trust-panel {
+  margin-top: 2.5rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border-radius: 28px;
+  background: rgba(5, 12, 27, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.auth-trust-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-trust-panel__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.auth-trust-panel__title {
+  margin: 0;
+}
+
+.auth-trust-panel__domain {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.95rem;
+}
+
+.auth-trust-panel__domain span {
+  font-weight: 600;
+  color: #fff;
+}
+
+.auth-trust-panel__body {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.auth-trust-panel__badge {
+  width: 130px;
+  height: 130px;
+  border-radius: 28px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  transition: border 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-trust-panel__badge--verified {
+  border-style: solid;
+  border-color: rgba(73, 255, 186, 0.8);
+  background: rgba(73, 255, 186, 0.12);
+  color: #d8ffef;
+  box-shadow: 0 20px 50px rgba(73, 255, 186, 0.25);
+}
+
+.auth-trust-panel__badge-label {
+  margin: 0;
+}
+
+.auth-trust-panel__messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.auth-trust-panel__status {
+  margin: 0;
+  font-weight: 600;
+}
+
+.auth-trust-panel__status--verified {
+  color: #9bffd5;
+}
+
+.auth-trust-panel__hint {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-trust-panel__steps h4 {
+  margin: 0 0 0.5rem;
+}
+
+.auth-trust-panel__steps ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-trust-panel__steps li {
+  line-height: 1.4;
+}
+
 @media (max-width: 640px) {
   .authenticity-trigger {
     left: 1rem;
@@ -299,6 +407,16 @@ body.overlay-open .authenticity-trigger {
 
   .auth-qr {
     margin: 0 auto;
+  }
+
+  .auth-trust-panel__body {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .auth-trust-panel__badge {
+    width: 110px;
+    height: 110px;
   }
 }
 
