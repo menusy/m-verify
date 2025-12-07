@@ -30,7 +30,6 @@ let refreshBtn;
 let openerBtn;
 let closeButtons;
 let qrImageEl;
-let qrPlaceholderEl;
 let qrStatusEl;
 let countdownInterval = null;
 let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
@@ -39,6 +38,8 @@ let currentToken = null;
 let isFetchingCode = false;
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded - initializing...');
+  
   overlay = document.getElementById('authOverlay');
   pinValueEl = document.getElementById('authPinValue');
   countdownEl = document.getElementById('authCountdown');
@@ -47,10 +48,21 @@ document.addEventListener('DOMContentLoaded', () => {
   openerBtn = document.querySelector('[data-auth-open]');
   closeButtons = document.querySelectorAll('[data-auth-close]');
   qrImageEl = document.getElementById('authQrImage');
-  qrPlaceholderEl = document.getElementById('authQrPlaceholder');
   qrStatusEl = document.getElementById('authQrStatus');
 
+  console.log('Elements found:', {
+    overlay: !!overlay,
+    pinValueEl: !!pinValueEl,
+    countdownEl: !!countdownEl,
+    progressEl: !!progressEl,
+    openerBtn: !!openerBtn,
+    qrImageEl: !!qrImageEl,
+    qrStatusEl: !!qrStatusEl,
+    API_BASE_URL: API_BASE_URL
+  });
+
   if (!overlay || !pinValueEl || !countdownEl || !progressEl || !openerBtn) {
+    console.error('Missing required elements!');
     return;
   }
 
@@ -81,7 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function openOverlay() {
-  if (!overlay) return;
+  console.log('openOverlay called');
+  if (!overlay) {
+    console.error('openOverlay: overlay is missing');
+    return;
+  }
+  console.log('Opening overlay and generating QR code...');
   overlay.hidden = false;
   overlay.classList.add('is-visible');
   document.body.classList.add('overlay-open');
@@ -217,10 +234,13 @@ function toggleRefreshButton(isDisabled) {
 }
 
 function setQrLoadingState(isLoading) {
-  if (!qrImageEl || !qrPlaceholderEl) return;
+  if (!qrImageEl) return;
   if (isLoading) {
-    qrImageEl.hidden = true;
-    qrPlaceholderEl.removeAttribute('hidden');
+    qrImageEl.style.opacity = '0.3';
+    qrImageEl.style.filter = 'blur(2px)';
+  } else {
+    qrImageEl.style.opacity = '1';
+    qrImageEl.style.filter = 'none';
   }
 }
 
@@ -257,8 +277,11 @@ function updateQrImage(token) {
   console.log('Loading QR image from:', url);
   console.log('Token used:', token.substring(0, 20) + '...');
   
-  qrImageEl.hidden = true;
-  qrPlaceholderEl?.removeAttribute('hidden');
+  // Pokaż obraz (może być pusty na początku, ale element jest widoczny)
+  qrImageEl.hidden = false;
+  qrImageEl.removeAttribute('hidden');
+  qrImageEl.style.display = 'block';
+  qrImageEl.style.opacity = '0.5'; // Półprzezroczysty podczas ładowania
   
   // Reset error state
   qrImageEl.onerror = null;
@@ -272,24 +295,52 @@ function updateQrImage(token) {
   
   // Set up load handler
   qrImageEl.onload = function() {
-    console.log('QR image loaded successfully');
+    console.log('QR image onload event fired');
     handleQrImageLoad();
   };
   
+  console.log('Setting QR image src to:', url);
   qrImageEl.src = url;
+  
+  // Sprawdź czy obraz jest już załadowany (może być w cache)
+  if (qrImageEl.complete && qrImageEl.naturalHeight !== 0) {
+    console.log('QR image already loaded from cache');
+    handleQrImageLoad();
+  }
 }
 
 function handleQrImageLoad() {
-  if (!qrImageEl) return;
+  console.log('handleQrImageLoad: QR image loaded successfully!');
+  if (!qrImageEl) {
+    console.error('handleQrImageLoad: qrImageEl is missing');
+    return;
+  }
+  console.log('Showing QR image');
+  
+  // Upewnij się, że obraz jest w pełni widoczny
   qrImageEl.hidden = false;
-  qrPlaceholderEl?.setAttribute('hidden', '');
+  qrImageEl.removeAttribute('hidden');
+  qrImageEl.style.display = 'block';
+  qrImageEl.style.visibility = 'visible';
+  qrImageEl.style.opacity = '1'; // Pełna nieprzezroczystość
+  
+  console.log('QR image should now be visible', {
+    qrImageElHidden: qrImageEl.hidden,
+    qrImageElDisplay: window.getComputedStyle(qrImageEl).display,
+    qrImageElVisibility: window.getComputedStyle(qrImageEl).visibility,
+    qrImageElOpacity: window.getComputedStyle(qrImageEl).opacity,
+    qrImageElSrc: qrImageEl.src.substring(0, 80) + '...',
+    qrImageElComplete: qrImageEl.complete,
+    qrImageElNaturalWidth: qrImageEl.naturalWidth,
+    qrImageElNaturalHeight: qrImageEl.naturalHeight
+  });
 }
 
 function handleQrImageError() {
   if (!qrImageEl) return;
   console.error('QR image error - image src:', qrImageEl.src);
   qrImageEl.hidden = true;
-  qrPlaceholderEl?.removeAttribute('hidden');
+  // Placeholder removed - no longer needed
   setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', true);
 }
 
