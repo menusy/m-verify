@@ -174,6 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sprawdź cookie weryfikacji przy ładowaniu strony
   checkVerificationCookie();
+  
+  // Sprawdź status domeny przy ładowaniu strony
+  void verifyDomainStatus();
 });
 
 function openOverlay() {
@@ -564,5 +567,75 @@ function buildApiUrl(path) {
   const fullUrl = `${API_BASE_URL}${normalizedPath}`;
   console.log('buildApiUrl:', { path, API_BASE_URL, fullUrl });
   return fullUrl;
+}
+
+async function verifyDomainStatus() {
+  const securityPanel = document.getElementById('securityInfoPanel');
+  const domainNameEl = document.getElementById('domainName');
+  const domainStatusEl = document.getElementById('domainStatus');
+  const domainStatusIconEl = document.getElementById('domainStatusIcon');
+  const connectionStatusEl = document.getElementById('httpsStatus');
+  const trustScoreEl = document.getElementById('trustScore');
+  
+  if (!securityPanel) {
+    console.warn('Security panel not found');
+    return;
+  }
+  
+  // Sprawdź HTTPS
+  const isHttps = window.location.protocol === 'https:';
+  connectionStatusEl.textContent = isHttps ? 'Aktywne' : 'Nieaktywne';
+  
+  // Pobierz hostname
+  const hostname = window.location.hostname;
+  domainNameEl.textContent = hostname;
+  
+  // Pokaż panel
+  securityPanel.hidden = false;
+  securityPanel.removeAttribute('hidden');
+  
+  // Ustaw status "sprawdzanie"
+  domainStatusEl.textContent = 'Sprawdzanie...';
+  domainStatusEl.className = 'security-status checking';
+  domainStatusIconEl.textContent = '🔍';
+  trustScoreEl.textContent = '-';
+  
+  try {
+    const domain = hostname;
+    const apiUrl = buildApiUrl(`/api/domain/verify?domain=${encodeURIComponent(domain)}`);
+    
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Aktualizuj status domeny
+    if (data.is_official) {
+      domainStatusEl.textContent = 'Zweryfikowana';
+      domainStatusEl.className = 'security-status verified';
+      domainStatusIconEl.textContent = '✓';
+      trustScoreEl.textContent = `${data.trust_score}%`;
+    } else {
+      domainStatusEl.textContent = 'Niezweryfikowana';
+      domainStatusEl.className = 'security-status unverified';
+      domainStatusIconEl.textContent = '⚠️';
+      trustScoreEl.textContent = `${data.trust_score}%`;
+    }
+    
+    // Aktualizuj nazwę domeny jeśli została znormalizowana
+    if (data.domain && data.domain !== hostname) {
+      domainNameEl.textContent = data.domain;
+    }
+    
+  } catch (error) {
+    console.error('Error verifying domain:', error);
+    domainStatusEl.textContent = 'Błąd sprawdzania';
+    domainStatusEl.className = 'security-status unverified';
+    domainStatusIconEl.textContent = '⚠️';
+    trustScoreEl.textContent = '-';
+  }
 }
 

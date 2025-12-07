@@ -18,6 +18,31 @@
     <div class="hero-background__overlay"></div>
   </div>
 
+  <div class="security-info-panel" id="securityInfoPanel" hidden>
+    <div class="security-info-content">
+      <div class="security-item">
+        <span class="security-icon" id="domainStatusIcon">🔍</span>
+        <span class="security-text">
+          <strong>Domena:</strong> <span id="domainName">-</span>
+          <span class="security-status" id="domainStatus">Sprawdzanie...</span>
+        </span>
+      </div>
+      <div class="security-item">
+        <span class="security-icon">🔒</span>
+        <span class="security-text">
+          <strong>Połączenie:</strong> <span id="connectionStatus">HTTPS: <span id="httpsStatus">Sprawdzanie...</span></span>
+        </span>
+      </div>
+      <div class="security-item">
+        <span class="security-icon">⭐</span>
+        <span class="security-text">
+          <strong>Wskaźnik zaufania:</strong> <span id="trustScore">-</span>
+        </span>
+      </div>
+      <a href="/compendium" class="security-link">Zobacz kompendium domen .gov.pl →</a>
+    </div>
+  </div>
+
   <button class="authenticity-trigger" type="button" data-auth-open>
     <span>
       Nie ufasz tej stronie?
