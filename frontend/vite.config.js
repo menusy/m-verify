@@ -6,7 +6,7 @@ export default defineConfig({
   publicDir: 'assets',
   build: {
     outDir: 'dist',
-    assetsDir: 'static',
+    assetsDir: 'assets',
     emptyOutDir: true,
     rollupOptions: {
       input: {
@@ -15,14 +15,16 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173,
+    port: 8000,
+    strictPort: true,
+    host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true
       },
       '/health': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true
       }
     }
