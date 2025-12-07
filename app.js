@@ -109,27 +109,53 @@ async function issueNewCode() {
   updateCountdownDisplay();
 
   try {
-    const response = await fetch(buildApiUrl('/api/pairing/generate'), {
-      method: 'POST'
+    const apiUrl = buildApiUrl('/api/pairing/generate');
+    console.log('Generating QR code, API URL:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
 
+    console.log('Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      const errorText = await response.text();
+      console.error('API Error:', response.status, errorText);
+      throw new Error(`Request failed with status ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
-    currentToken = data.token ?? null;
+    console.log('QR code generated, full response:', data);
+    console.log('Token received:', data.token ? data.token.substring(0, 20) + '...' : 'MISSING');
+    console.log('Token type:', typeof data.token, 'Token length:', data.token?.length);
+    
+    // Walidacja tokenu z API
+    if (!data.token || typeof data.token !== 'string' || data.token.trim() === '') {
+      console.error('Invalid token from API:', data);
+      setQrStatus('Błąd: Nieprawidłowy token z serwera. Spróbuj ponownie.', true);
+      currentToken = null;
+      return;
+    }
+    
+    currentToken = data.token;
     currentCodeTtlSeconds = Number.parseInt(data.expires_in_seconds, 10) || DEFAULT_CODE_TTL_SECONDS;
     secondsRemaining = currentCodeTtlSeconds;
 
     setPinValue(data.pin ?? '------');
     updateCountdownDisplay();
     startCountdown();
+    
+    // Wywołaj updateQrImage z walidacją
+    console.log('Calling updateQrImage with token:', currentToken.substring(0, 20) + '...');
     updateQrImage(currentToken);
     setQrStatus('Zeskanuj kod w aplikacji mObywatel.');
   } catch (error) {
     console.error('Failed to generate QR code', error);
-    setQrStatus('Nie udało się pobrać kodu. Spróbuj ponownie.', true);
+    setQrStatus(`Nie udało się pobrać kodu: ${error.message}. Spróbuj ponownie.`, true);
+    currentToken = null;
   } finally {
     isFetchingCode = false;
     toggleRefreshButton(false);
@@ -209,10 +235,47 @@ function setQrStatus(message = '', isError = false) {
 }
 
 function updateQrImage(token) {
-  if (!qrImageEl || !token) return;
+  if (!qrImageEl) {
+    console.error('updateQrImage: qrImageEl is missing');
+    return;
+  }
+  
+  if (!token || typeof token !== 'string' || token.trim() === '') {
+    console.error('updateQrImage: Invalid token', { token, type: typeof token });
+    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', true);
+    return;
+  }
+  
+  // Walidacja tokenu - powinien być długim stringiem, nie "token"
+  if (token === 'token' || token.length < 10) {
+    console.error('updateQrImage: Token looks invalid', { token, length: token.length });
+    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', true);
+    return;
+  }
+  
   const url = `${buildApiUrl(`/api/pairing/qr/${encodeURIComponent(token)}`)}?t=${Date.now()}`;
+  console.log('Loading QR image from:', url);
+  console.log('Token used:', token.substring(0, 20) + '...');
+  
   qrImageEl.hidden = true;
   qrPlaceholderEl?.removeAttribute('hidden');
+  
+  // Reset error state
+  qrImageEl.onerror = null;
+  qrImageEl.onload = null;
+  
+  // Set up error handler
+  qrImageEl.onerror = function() {
+    console.error('Failed to load QR image from:', url);
+    handleQrImageError();
+  };
+  
+  // Set up load handler
+  qrImageEl.onload = function() {
+    console.log('QR image loaded successfully');
+    handleQrImageLoad();
+  };
+  
   qrImageEl.src = url;
 }
 
@@ -224,6 +287,7 @@ function handleQrImageLoad() {
 
 function handleQrImageError() {
   if (!qrImageEl) return;
+  console.error('QR image error - image src:', qrImageEl.src);
   qrImageEl.hidden = true;
   qrPlaceholderEl?.removeAttribute('hidden');
   setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', true);
@@ -231,6 +295,8 @@ function handleQrImageError() {
 
 function buildApiUrl(path) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE_URL}${normalizedPath}`;
+  const fullUrl = `${API_BASE_URL}${normalizedPath}`;
+  console.log('buildApiUrl:', { path, API_BASE_URL, fullUrl });
+  return fullUrl;
 }
 

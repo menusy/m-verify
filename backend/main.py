@@ -296,7 +296,7 @@ async def get_qr_code_image(request: Request, token: str):
     # QR code zawiera token:nonce dla bezpieczeństwa
     qr_data = f"{token}:{session['nonce']}"
     
-    # Generuj QR code
+    # Generuj QR code z kolorami projektu gov.pl
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -306,14 +306,28 @@ async def get_qr_code_image(request: Request, token: str):
     qr.add_data(qr_data)
     qr.make(fit=True)
     
-    img = qr.make_image(fill_color="black", back_color="white")
+    # Kolory projektu: niebieski (#0a4d9c) zamiast czarnego, białe tło
+    # Używamy RGB tuple zamiast nazw kolorów dla lepszej kontroli
+    img = qr.make_image(
+        fill_color=(10, 77, 156),  # --blue: #0a4d9c
+        back_color=(255, 255, 255)  # białe tło
+    )
     
     # Konwertuj do bytes
     img_bytes = io.BytesIO()
     img.save(img_bytes, format='PNG')
     img_bytes.seek(0)
     
-    return Response(content=img_bytes.read(), media_type="image/png")
+    # Zwróć obraz z odpowiednimi nagłówkami CORS
+    return Response(
+        content=img_bytes.read(), 
+        media_type="image/png",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 @app.get("/api/pairing/status/{token}")
 @limiter.limit("60/minute")  # Status można sprawdzać częściej
