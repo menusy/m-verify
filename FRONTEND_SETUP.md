@@ -39,3 +39,4 @@ Vercel automatycznie wykryje `package.json` i `vercel.json`:
    - Wdroży pliki z katalogu `dist/`
 
 **Uwaga:** Jeśli backend FastAPI też ma być na Vercel, potrzebna będzie dodatkowa konfiguracja serverless functions. Alternatywnie, backend może być na osobnym serwerze (Render, Railway, itp.), a frontend będzie łączył się z nim przez API.
+

@@ -368,3 +368,4 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
     );
   }
 }
+

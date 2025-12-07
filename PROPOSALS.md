@@ -322,3 +322,4 @@ class VerificationHistoryScreen extends StatefulWidget {
 5. **Rate limiting** (30 min)
 
 **Szacowany czas:** ~4-5 godzin
+

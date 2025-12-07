@@ -15,3 +15,4 @@ from backend.main import app
 
 # Handler dla Vercel - Mangum konwertuje ASGI (FastAPI) do AWS Lambda/Vercel
 handler = Mangum(app, lifespan="off")
+

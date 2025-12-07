@@ -148,3 +148,4 @@ W razie problemów sprawdź:
 - Dokumentację qr_code_scanner: https://pub.dev/packages/qr_code_scanner
 
 # m-verify
+

@@ -152,3 +152,4 @@
 - ❌ Automatyczne wznowienie kamery (dla QR)
 - ❌ Możliwość ponownej próby
 
+

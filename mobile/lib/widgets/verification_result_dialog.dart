@@ -169,3 +169,4 @@ class VerificationResultDialog extends StatelessWidget {
     );
   }
 }
+
