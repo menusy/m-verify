@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Set, Any
@@ -117,6 +117,16 @@ class PairingConfirm(BaseModel):
             v = re.sub(r'[<>"\']', '', v)
         return v
 
+class TrustStartRequest(BaseModel):
+    hostname: str
+
+    @validator("hostname")
+    def validate_hostname(cls, value: str) -> str:
+        host = normalize_hostname(value)
+        if not host:
+            raise ValueError("Hostname jest wymagany.")
+        return host
+
 # Przykładowa baza danych w pamięci (w produkcji użyj prawdziwej bazy danych)
 items_db = []
 next_id = 1
@@ -125,6 +135,64 @@ next_id = 1
 pairing_sessions: Dict[str, dict] = {}  # token -> session data
 pin_to_token: Dict[str, str] = {}  # pin -> token
 PAIRING_TIMEOUT_SECONDS = 300  # 5 minut
+
+# Mechanizm trusted image
+TRUST_COOKIE_NAME = "gov_trust_token"
+TRUST_IMAGE_PLACEHOLDER = "https://via.placeholder.com/80x80?text=Trust"
+TRUST_SESSION_AUTO_APPROVE_SECONDS = 5
+TRUST_SESSION_TTL_SECONDS = 600
+TRUST_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 365
+trust_tokens: Dict[str, dict] = {}
+trust_sessions: Dict[str, dict] = {}
+
+def normalize_hostname(hostname: str) -> str:
+    host = (hostname or "").strip().lower()
+    # Usuń potencjalny port
+    if ":" in host:
+        host = host.split(":")[0]
+    return host
+
+
+def is_allowed_trust_hostname(hostname: str) -> bool:
+    if not hostname:
+        return False
+    return hostname.endswith(".gov.pl") or hostname in {"localhost", "127.0.0.1"}
+
+
+def ensure_trust_hostname(hostname: str) -> str:
+    host = normalize_hostname(hostname)
+    if not is_allowed_trust_hostname(host):
+        raise HTTPException(status_code=400, detail="Obsługujemy wyłącznie domeny gov.pl")
+    return host
+
+
+def cleanup_trust_tokens() -> None:
+    if not trust_tokens:
+        return
+    now = datetime.utcnow()
+    expired_tokens = [
+        token for token, payload in trust_tokens.items()
+        if payload.get("expires_at") and payload["expires_at"] < now
+    ]
+    for token in expired_tokens:
+        trust_tokens.pop(token, None)
+
+
+def cleanup_trust_sessions() -> None:
+    if not trust_sessions:
+        return
+    now = datetime.utcnow()
+    expired_sessions = [
+        session_id
+        for session_id, payload in trust_sessions.items()
+        if payload.get("created_at") and now - payload["created_at"] > timedelta(seconds=TRUST_SESSION_TTL_SECONDS)
+    ]
+    for session_id in expired_sessions:
+        trust_sessions.pop(session_id, None)
+
+
+def isoformat_now() -> str:
+    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 # System weryfikacji domen .gov.pl
 GOV_DOMAINS_CACHE: Optional[Dict[str, Any]] = None
@@ -383,6 +451,104 @@ async def api_info():
 async def health_check():
     """Sprawdzenie stanu API"""
     return {"status": "healthy", "service": "gov-api"}
+
+# Trusted image endpoints
+@app.get("/api/trust/trust-status")
+async def get_trust_status(request: Request, hostname: str = Query(..., description="Hostname odwiedzanej strony")):
+    """Zwraca status zaufania użytkownika względem domeny."""
+    cleanup_trust_tokens()
+    host = normalize_hostname(hostname)
+    if not is_allowed_trust_hostname(host):
+        return {"trusted": False}
+
+    token = request.cookies.get(TRUST_COOKIE_NAME)
+    if not token:
+        return {"trusted": False}
+
+    token_payload = trust_tokens.get(token)
+    if not token_payload:
+        return {"trusted": False}
+
+    expires_at = token_payload.get("expires_at")
+    if expires_at and expires_at < datetime.utcnow():
+        trust_tokens.pop(token, None)
+        return {"trusted": False}
+
+    return {
+        "trusted": True,
+        "trustImageUrl": token_payload["trustImageUrl"],
+        "lastVerifiedAt": token_payload["lastVerifiedAt"]
+    }
+
+
+@app.post("/api/trust/start-verification")
+async def start_trust_verification(payload: TrustStartRequest):
+    """Rozpoczyna proces weryfikacji trusted image i zwraca dane sesji."""
+    host = ensure_trust_hostname(payload.hostname)
+    cleanup_trust_sessions()
+
+    session_id = secrets.token_urlsafe(16)
+    qr_code_url = f"https://via.placeholder.com/200x200.png?text={session_id[-4:].upper()}"
+
+    trust_sessions[session_id] = {
+        "hostname": host,
+        "created_at": datetime.utcnow(),
+        "trusted": False,
+        "qrCodeUrl": qr_code_url
+    }
+
+    return {
+        "sessionId": session_id,
+        "qrCodeUrl": qr_code_url
+    }
+
+
+@app.get("/api/trust/verify-status")
+async def verify_trust_status(sessionId: str = Query(..., description="Identyfikator sesji weryfikacyjnej")):
+    """Sprawdza status sesji i w razie sukcesu ustawia cookie zaufania."""
+    cleanup_trust_sessions()
+    cleanup_trust_tokens()
+
+    session = trust_sessions.get(sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesja nie istnieje lub wygasła.")
+
+    now = datetime.utcnow()
+    elapsed = now - session["created_at"]
+
+    if not session.get("trusted") and elapsed >= timedelta(seconds=TRUST_SESSION_AUTO_APPROVE_SECONDS):
+        trust_token = secrets.token_urlsafe(32)
+        verified_at = isoformat_now()
+        payload = {
+            "hostname": session["hostname"],
+            "trustImageUrl": TRUST_IMAGE_PLACEHOLDER,
+            "lastVerifiedAt": verified_at,
+            "expires_at": now + timedelta(seconds=TRUST_TOKEN_TTL_SECONDS)
+        }
+        trust_tokens[trust_token] = payload
+        session["trusted"] = True
+        session["trust_token"] = trust_token
+        session["trust_payload"] = payload
+
+    if session.get("trusted"):
+        response = JSONResponse({
+            "trusted": True,
+            "trustToken": session["trust_token"],
+            "trustImageUrl": session["trust_payload"]["trustImageUrl"],
+            "lastVerifiedAt": session["trust_payload"]["lastVerifiedAt"]
+        })
+        response.set_cookie(
+            key=TRUST_COOKIE_NAME,
+            value=session["trust_token"],
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=TRUST_TOKEN_TTL_SECONDS,
+            path="/"
+        )
+        return response
+
+    return {"trusted": False}
 
 # Endpoints dla Items
 @app.get("/api/items", response_model=List[Item])

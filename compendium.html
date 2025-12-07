@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kompendium domen gov.pl</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="compendium-page">
+  <header class="compendium-hero">
+    <p class="auth-card__eyebrow">Kompendium .gov.pl</p>
+    <h1>Lista oficjalnych domen administracji publicznej</h1>
+    <p>
+      Sprawdź, czy interesująca Cię domena znajduje się w rejestrze gov.pl. Możesz filtrować
+      wyniki według kategorii oraz nazwy, a dane pochodzą z pliku referencyjnego udostępnionego w aplikacji.
+    </p>
+  </header>
+
+  <main class="compendium-main" id="compendiumApp">
+    <section class="compendium-toolbar">
+      <div class="compendium-field">
+        <label for="compendiumSearch">Wyszukaj domenę</label>
+        <input
+          type="search"
+          id="compendiumSearch"
+          name="search"
+          placeholder="np. nfz.gov.pl, ministerstwo"
+          autocomplete="off"
+        />
+      </div>
+      <div class="compendium-field">
+        <label for="compendiumCategory">Kategoria</label>
+        <select id="compendiumCategory" name="category">
+          <option value="">Wszystkie kategorie</option>
+        </select>
+      </div>
+      <button type="button" class="compendium-refresh" id="compendiumRefresh">
+        Odśwież dane
+      </button>
+      <a class="compendium-back" href="/">← Wróć do strony weryfikacji</a>
+    </section>
+
+    <p class="compendium-summary" id="compendiumSummary" aria-live="polite">
+      Trwa ładowanie danych o domenach…
+    </p>
+
+    <div id="compendiumList" class="compendium-grid" aria-live="polite"></div>
+  </main>
+
+  <script type="module" src="/compendium.js"></script>
+</body>
+</html>
+
+

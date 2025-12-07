@@ -1,10 +1,8 @@
-import { initTrustWidget } from './trust/trust-widget';
+import './styles.css';
 
 const DEFAULT_CODE_TTL_SECONDS = 120;
 const REFRESH_WARNING_THRESHOLD_SECONDS = 30;
 const STATUS_POLL_INTERVAL_MS = 3000;
-const VERIFICATION_COOKIE_NAME = 'gov_verification_status';
-const VERIFICATION_COOKIE_EXPIRY_DAYS = 365; // Cookie ważne przez rok
 const API_BASE_URL = (() => {
   // Sprawdź zmienną środowiskową
   const base = import.meta?.env?.VITE_API_BASE_URL ?? '';
@@ -35,11 +33,9 @@ let openerBtn;
 let closeButtons;
 let qrImageEl;
 let qrStatusEl;
-let codeExpiredModal;
-let expiredModalRefreshBtn;
-let expiredModalCloseBtn;
+let qrExpiredEl;
+let qrOverlayRefreshBtn;
 let qrPlaceholderEl;
-let securityInfoFab;
 let countdownInterval = null;
 let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
 let currentCodeTtlSeconds = DEFAULT_CODE_TTL_SECONDS;
@@ -47,76 +43,9 @@ let currentToken = null;
 let isFetchingCode = false;
 let statusPollingInterval = null;
 let hasShownSuccessNotification = false;
-let cookieImageEl = null;
-
-// Funkcje do obsługi cookies
-function setCookie(name, value, days) {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-}
-
-function getCookie(name) {
-  const nameEQ = name + '=';
-  const ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
-}
-
-function deleteCookie(name) {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-}
-
-function saveVerificationStatus() {
-  const timestamp = Date.now();
-  setCookie(VERIFICATION_COOKIE_NAME, 'verified', VERIFICATION_COOKIE_EXPIRY_DAYS);
-  showCookieImage();
-}
-
-function checkVerificationCookie() {
-  const verificationStatus = getCookie(VERIFICATION_COOKIE_NAME);
-  if (verificationStatus === 'verified') {
-    showCookieImage();
-  }
-}
-
-function showCookieImage() {
-  const cookieIcon = document.getElementById('verificationCookieIcon');
-  const cookieIconModal = document.getElementById('verificationCookieIconModal');
-  
-  if (cookieIcon) {
-    cookieIcon.hidden = false;
-    cookieIcon.removeAttribute('hidden');
-  }
-  
-  if (cookieIconModal) {
-    cookieIconModal.hidden = false;
-    cookieIconModal.removeAttribute('hidden');
-  }
-}
-
-function hideCookieImage() {
-  const cookieIcon = document.getElementById('verificationCookieIcon');
-  const cookieIconModal = document.getElementById('verificationCookieIconModal');
-  
-  if (cookieIcon) {
-    cookieIcon.hidden = true;
-    cookieIcon.setAttribute('hidden', '');
-  }
-  
-  if (cookieIconModal) {
-    cookieIconModal.hidden = true;
-    cookieIconModal.setAttribute('hidden', '');
-  }
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded - initializing...');
-  initTrustWidget();
 
   overlay = document.getElementById('authOverlay');
   pinValueEl = document.getElementById('authPinValue');
@@ -127,11 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
   closeButtons = document.querySelectorAll('[data-auth-close]');
   qrImageEl = document.getElementById('authQrImage');
   qrStatusEl = document.getElementById('authQrStatus');
-  codeExpiredModal = document.getElementById('codeExpiredModal');
-  expiredModalRefreshBtn = document.getElementById('expiredModalRefresh');
-  expiredModalCloseBtn = document.getElementById('expiredModalClose');
+  qrExpiredEl = document.getElementById('authQrExpired');
+  qrOverlayRefreshBtn = document.getElementById('authQrOverlayRefresh');
   qrPlaceholderEl = document.getElementById('authQrPlaceholder');
-  securityInfoFab = document.getElementById('securityInfoFab');
 
   console.log('Elements found:', {
     overlay: !!overlay,
@@ -141,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     openerBtn: !!openerBtn,
     qrImageEl: !!qrImageEl,
     qrStatusEl: !!qrStatusEl,
-    securityInfoFab: !!securityInfoFab,
     API_BASE_URL: API_BASE_URL
   });
 
@@ -159,15 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Obsługa Escape - najpierw modal wygaśnięcia, potem główny overlay
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      // Najpierw zamknij modal wygaśnięcia, jeśli jest otwarty
-      if (codeExpiredModal && !codeExpiredModal.hasAttribute('hidden')) {
-        closeExpiredModal();
-      } else {
-        closeOverlay();
-      }
+      closeOverlay();
     }
   });
 
@@ -181,123 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
     void issueNewCode();
   });
 
-  expiredModalRefreshBtn?.addEventListener('click', () => {
+  qrOverlayRefreshBtn?.addEventListener('click', () => {
     if (isFetchingCode) return;
-    closeExpiredModal();
     void issueNewCode();
   });
-
-  expiredModalCloseBtn?.addEventListener('click', () => {
-    closeExpiredModal();
-  });
-
-  // Zamknij modal przy kliknięciu w overlay
-  codeExpiredModal?.addEventListener('click', (event) => {
-    if (event.target === codeExpiredModal || event.target.classList.contains('expired-modal__overlay')) {
-      closeExpiredModal();
-    }
-  });
-  // Sprawdź cookie weryfikacji przy ładowaniu strony
-  checkVerificationCookie();
-  // Przygotuj dane modułu bezpieczeństwa (bez pokazywania)
-  initSecurityPanel();
-
-  // Floating Action Button - otwieranie/zamykanie panelu bezpieczeństwa
-  securityInfoFab?.addEventListener('click', () => {
-    const panel = document.getElementById('securityInfoPanel');
-    if (!panel) return;
-
-    const isHidden = panel.hasAttribute('hidden');
-    if (isHidden) {
-      panel.removeAttribute('hidden');
-      // Odśwież informacje przy każdym otwarciu
-      void updateSecurityInfo();
-    } else {
-      panel.setAttribute('hidden', '');
-    }
-  });
 });
-
-// Panel bezpieczeństwa - weryfikacja domeny i SSL
-async function initSecurityPanel() {
-  const panel = document.getElementById('securityInfoPanel');
-  if (!panel) {
-    console.warn('Security info panel not found in DOM');
-    return;
-  }
-
-  const domainNameEl = document.getElementById('domainName');
-  const httpsStatusEl = document.getElementById('httpsStatus');
-
-  // Ustaw aktualną domenę
-  const currentDomain = window.location.hostname || '-';
-  if (domainNameEl) {
-    domainNameEl.textContent = currentDomain;
-  }
-
-  // Informacja o HTTPS
-  const isHttps = window.location.protocol === 'https:';
-  if (httpsStatusEl) {
-    httpsStatusEl.textContent = isHttps ? 'Aktywne' : 'Nieaktywne';
-  }
-
-  // Ustaw stan "Sprawdzanie..." i wywołaj weryfikację domeny po stronie backendu
-  void updateSecurityInfo();
-}
-
-async function updateSecurityInfo() {
-  const domainStatusEl = document.getElementById('domainStatus');
-  const domainStatusIconEl = document.getElementById('domainStatusIcon');
-  const trustScoreEl = document.getElementById('trustScore');
-
-  const currentDomain = window.location.hostname;
-  if (!currentDomain || !domainStatusEl || !trustScoreEl) {
-    return;
-  }
-
-  // Reset klas statusu
-  domainStatusEl.classList.remove('verified', 'unverified', 'checking');
-  domainStatusEl.textContent = 'Sprawdzanie...';
-  domainStatusEl.classList.add('checking');
-
-  try {
-    const apiUrl = buildApiUrl(`/api/domain/verify?domain=${encodeURIComponent(currentDomain)}`);
-    const response = await fetch(apiUrl);
-
-    if (!response.ok) {
-      throw new Error(`Status ${response.status}`);
-    }
-
-    const data = await response.json();
-    const isOfficial = Boolean(data.is_official);
-    const trustScore = typeof data.trust_score === 'number' ? data.trust_score : (isOfficial ? 100 : 0);
-
-    // Ustaw status domeny (.gov.pl + czy jest na liście)
-    domainStatusEl.classList.remove('verified', 'unverified', 'checking');
-    if (isOfficial) {
-      domainStatusEl.textContent = 'Zweryfikowana';
-      domainStatusEl.classList.add('verified');
-      if (domainStatusIconEl) {
-        domainStatusIconEl.textContent = '✓';
-      }
-    } else {
-      domainStatusEl.textContent = 'Niezweryfikowana';
-      domainStatusEl.classList.add('unverified');
-      if (domainStatusIconEl) {
-        domainStatusIconEl.textContent = '⚠️';
-      }
-    }
-
-    // Wskaźnik zaufania
-    trustScoreEl.textContent = `${trustScore}%`;
-  } catch (error) {
-    console.error('Failed to verify domain:', error);
-    domainStatusEl.classList.remove('verified', 'checking');
-    domainStatusEl.classList.add('unverified');
-    domainStatusEl.textContent = 'Błąd sprawdzania';
-    trustScoreEl.textContent = 'Nieznany';
-  }
-}
 
 function openOverlay() {
   console.log('openOverlay called');
@@ -383,8 +191,6 @@ async function issueNewCode() {
 
     // Wywołaj updateQrImage z walidacją
     console.log('Calling updateQrImage with token:', currentToken.substring(0, 20) + '...');
-    // Upewnij się, że komunikat wygaśnięcia jest ukryty przed pokazaniem QR
-    setQrExpiredState(false);
     updateQrImage(currentToken);
     setQrStatus('Zeskanuj kod w aplikacji mObywatel.');
     startStatusPolling(currentToken);
@@ -404,21 +210,14 @@ function startCountdown() {
     clearInterval(countdownInterval);
   }
 
+  handleRefreshThreshold(secondsRemaining);
   countdownInterval = setInterval(() => {
     secondsRemaining = Math.max(secondsRemaining - 1, 0);
     updateCountdownDisplay();
+    handleRefreshThreshold(secondsRemaining);
 
-    // Gdy countdown dojdzie do 00:00, nie pokazuj od razu komunikatu
-    // Pozwól API polling sprawdzić rzeczywisty status kodu
-    // Komunikat pojawi się tylko gdy API potwierdzi wygaśnięcie (status "expired")
-    // Nie wywołuj handleRefreshThreshold - przycisk pokaże się tylko gdy kod wygasł
-    // WAŻNE: Gdy countdown osiągnie 0, nie pokazuj komunikatu wygaśnięcia
-    // Poczekaj na potwierdzenie z API (status "expired" lub kod 404/410)
-    if (secondsRemaining <= 0) {
-      // Zatrzymaj countdown, ale nie pokazuj komunikatu wygaśnięcia
-      // Status polling sprawdzi rzeczywisty status kodu
-      clearInterval(countdownInterval);
-      countdownInterval = null;
+    if (secondsRemaining === 0) {
+      handleCodeExpired();
     }
   }, 1000);
 }
@@ -576,41 +375,40 @@ function handleQrImageError() {
   console.error('QR image error - image src:', qrImageEl.src);
   qrImageEl.hidden = true;
   // Placeholder removed - no longer needed
-  // WAŻNE: Nie pokazuj komunikatu wygaśnięcia przy błędzie ładowania obrazu
-  // To może być błąd sieciowy, a kod może być nadal aktywny
-  setQrExpiredState(false);
   setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', 'error');
 }
 
 function setQrExpiredState(isExpired) {
-  if (!codeExpiredModal) return;
+  if (!qrExpiredEl) return;
 
   if (isExpired) {
-    codeExpiredModal.removeAttribute('hidden');
-    // Zapobiegaj scrollowaniu body gdy modal jest otwarty
-    document.body.classList.add('modal-open');
+    qrExpiredEl.removeAttribute('hidden');
+    qrImageEl?.setAttribute('hidden', '');
+    qrPlaceholderEl?.setAttribute('hidden', '');
   } else {
-    codeExpiredModal.setAttribute('hidden', '');
-    document.body.classList.remove('modal-open');
+    qrExpiredEl.setAttribute('hidden', '');
   }
 }
 
-function closeExpiredModal() {
-  setQrExpiredState(false);
-}
-
 function handleRefreshThreshold(currentSeconds) {
-  // Nie pokazuj przycisku przedwcześnie - tylko gdy kod rzeczywiście wygasł
-  // Przycisk pokaże się tylko gdy handleCodeExpired() zostanie wywołane
-  setRefreshButtonVisibility(false);
+  if (currentSeconds <= 0) {
+    setRefreshButtonVisibility(true);
+    return;
+  }
+
+  if (currentSeconds <= REFRESH_WARNING_THRESHOLD_SECONDS) {
+    setRefreshButtonVisibility(true);
+  } else {
+    setRefreshButtonVisibility(false);
+  }
 }
 
 function handleCodeExpired() {
   resetCountdown();
   stopStatusPolling();
   setQrExpiredState(true);
-  setRefreshButtonVisibility(false); // Przycisk jest teraz w modalu
-  setQrStatus('Kod wygasł. Kliknij "Odśwież kod" w oknie dialogowym.');
+  setRefreshButtonVisibility(true);
+  setQrStatus('Kod wygasł. Odśwież, aby wygenerować nowy.');
 }
 
 function startStatusPolling(token) {
@@ -634,34 +432,22 @@ async function fetchPairingStatus(token) {
   try {
     const response = await fetch(statusUrl);
     if (!response.ok) {
-      // Tylko gdy API wyraźnie zwraca 404 lub 410 (kod nie istnieje lub wygasł)
       if (response.status === 404 || response.status === 410) {
         handleCodeExpired();
         return;
       }
-      // Dla innych błędów (500, timeout, itp.) nie pokazuj komunikatu wygaśnięcia
-      // Kod może być nadal aktywny, tylko wystąpił błąd serwera
-      console.error(`Status request failed with ${response.status}`);
-      // WAŻNE: Ukryj komunikat wygaśnięcia przy błędach serwera - kod może być nadal aktywny
-      setQrExpiredState(false);
-      return;
+      throw new Error(`Status request failed with ${response.status}`);
     }
     const data = await response.json();
     handlePairingStatusResponse(data);
   } catch (error) {
-    // Błąd sieciowy - nie pokazuj komunikatu wygaśnięcia
-    // Kod może być nadal aktywny, tylko wystąpił problem z połączeniem
     console.error('Failed to fetch pairing status', error);
-    // WAŻNE: Ukryj komunikat wygaśnięcia przy błędach sieciowych - kod może być nadal aktywny
-    setQrExpiredState(false);
-    // Nie wywołuj handleCodeExpired() - kod może być nadal aktywny
   }
 }
 
 function handlePairingStatusResponse(data) {
   if (!data) return;
-  const { status, verification_result: verificationResult, remaining_seconds } = data;
-  
+  const { status, verification_result: verificationResult } = data;
   if (status === 'confirmed') {
     const successMessage =
       verificationResult?.message ?? 'Autoryzacja przebiegła poprawnie.';
@@ -671,53 +457,12 @@ function handlePairingStatusResponse(data) {
     notifyBrowserSuccess(successMessage);
     stopStatusPolling();
     resetCountdown();
-    // Zapisz status weryfikacji w cookie
-    saveVerificationStatus();
     return;
   }
-  
-  // Sprawdź czy kod rzeczywiście wygasł - tylko gdy status jest "expired"
   if (status === 'expired') {
     handleCodeExpired();
     return;
   }
-  
-  // Jeśli kod jest aktywny (status "pending"), upewnij się, że komunikat wygaśnięcia jest ukryty
-  if (status === 'pending') {
-    // WAŻNE: Ukryj komunikat wygaśnięcia jeśli kod jest jeszcze aktywny
-    setQrExpiredState(false);
-    setRefreshButtonVisibility(false); // Ukryj przycisk gdy kod jest aktywny
-    
-    // Zsynchronizuj countdown z rzeczywistym czasem z API jeśli jest dostępny
-    if (remaining_seconds !== undefined && remaining_seconds !== null) {
-      const apiSeconds = Math.max(0, Math.floor(remaining_seconds));
-      // Tylko aktualizuj jeśli kod jest nadal aktywny (remaining_seconds > 0)
-      if (apiSeconds > 0) {
-        secondsRemaining = apiSeconds;
-        updateCountdownDisplay();
-        // Upewnij się, że countdown działa
-        if (!countdownInterval) {
-          startCountdown();
-        }
-      } else if (apiSeconds <= 0) {
-        // Jeśli remaining_seconds <= 0, ale status jest nadal "pending",
-        // to znaczy że kod może być na granicy wygaśnięcia
-        // Nie pokazuj jeszcze komunikatu - poczekaj aż API potwierdzi status "expired"
-        // Zatrzymaj countdown, ale nie pokazuj komunikatu
-        secondsRemaining = 0;
-        updateCountdownDisplay();
-        // WAŻNE: Ukryj komunikat wygaśnięcia - kod może być nadal aktywny
-        setQrExpiredState(false);
-        // Nie resetuj countdown - poczekaj na potwierdzenie z API
-      }
-    }
-    setQrStatus('Oczekiwanie na potwierdzenie w aplikacji mObywatel...', 'pending');
-    return;
-  }
-  
-  // Dla innych statusów również ukryj komunikat wygaśnięcia (kod jest aktywny)
-  setQrExpiredState(false);
-  setRefreshButtonVisibility(false);
   setQrStatus('Oczekiwanie na potwierdzenie w aplikacji mObywatel...', 'pending');
 }
 
