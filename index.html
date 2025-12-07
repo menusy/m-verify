@@ -28,21 +28,36 @@
       </p>
 
       <div class="auth-card__content">
-        <div class="auth-qr" aria-hidden="true">
-          <svg viewBox="0 0 120 120" role="img" aria-label="Przykładowy kod QR">
-            <rect width="120" height="120" fill="#0b1c3c"/>
-            <rect x="8" y="8" width="32" height="32" fill="#f7f8fb"/>
-            <rect x="80" y="8" width="32" height="32" fill="#f7f8fb"/>
-            <rect x="8" y="80" width="32" height="32" fill="#f7f8fb"/>
-            <rect x="20" y="20" width="8" height="8" fill="#0b1c3c"/>
-            <rect x="92" y="20" width="8" height="8" fill="#0b1c3c"/>
-            <rect x="20" y="92" width="8" height="8" fill="#0b1c3c"/>
-            <rect x="52" y="52" width="12" height="12" fill="#f7f8fb"/>
-            <rect x="68" y="52" width="6" height="6" fill="#f7f8fb"/>
-            <rect x="52" y="68" width="6" height="6" fill="#f7f8fb"/>
-            <rect x="64" y="82" width="12" height="12" fill="#f7f8fb"/>
-            <rect x="82" y="64" width="12" height="12" fill="#f7f8fb"/>
-          </svg>
+        <div class="auth-qr-block">
+          <div class="auth-qr">
+            <div id="authQrPlaceholder" aria-hidden="true">
+              <svg viewBox="0 0 120 120" role="img" aria-label="Przykładowy kod QR">
+                <rect width="120" height="120" fill="#0b1c3c"/>
+                <rect x="8" y="8" width="32" height="32" fill="#f7f8fb"/>
+                <rect x="80" y="8" width="32" height="32" fill="#f7f8fb"/>
+                <rect x="8" y="80" width="32" height="32" fill="#f7f8fb"/>
+                <rect x="20" y="20" width="8" height="8" fill="#0b1c3c"/>
+                <rect x="92" y="20" width="8" height="8" fill="#0b1c3c"/>
+                <rect x="20" y="92" width="8" height="8" fill="#0b1c3c"/>
+                <rect x="52" y="52" width="12" height="12" fill="#f7f8fb"/>
+                <rect x="68" y="52" width="6" height="6" fill="#f7f8fb"/>
+                <rect x="52" y="68" width="6" height="6" fill="#f7f8fb"/>
+                <rect x="64" y="82" width="12" height="12" fill="#f7f8fb"/>
+                <rect x="82" y="64" width="12" height="12" fill="#f7f8fb"/>
+              </svg>
+            </div>
+            <img
+              id="authQrImage"
+              src=""
+              alt="Kod QR do weryfikacji w aplikacji mObywatel"
+              width="120"
+              height="120"
+              decoding="async"
+              loading="lazy"
+              hidden
+            />
+          </div>
+          <p class="auth-qr__status" id="authQrStatus" aria-live="polite"></p>
         </div>
 
         <div class="auth-pin">
@@ -55,7 +70,7 @@
             <div class="auth-progress__bar" id="authProgress"></div>
           </div>
           <p class="auth-pin__hint">
-            Kod aktywny przez 2 minuty. Zeskanuj go w aplikacji mObywatel.
+            Kod pozostaje aktywny przez kilka minut. Zeskanuj go w aplikacji mObywatel.
           </p>
           <div class="auth-pin__actions">
             <button type="button" id="authRefresh">Odśwież kod</button>

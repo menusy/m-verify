@@ -1,6 +1,13 @@
 import './styles.css';
 
-const CODE_TTL_SECONDS = 120;
+const DEFAULT_CODE_TTL_SECONDS = 120;
+const API_BASE_URL = (() => {
+  const base = import.meta?.env?.VITE_API_BASE_URL ?? '';
+  if (!base) {
+    return '';
+  }
+  return base.replace(/\/+$/, '');
+})();
 
 let overlay;
 let pinValueEl;
@@ -9,8 +16,14 @@ let progressEl;
 let refreshBtn;
 let openerBtn;
 let closeButtons;
+let qrImageEl;
+let qrPlaceholderEl;
+let qrStatusEl;
 let countdownInterval = null;
-let secondsRemaining = CODE_TTL_SECONDS;
+let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
+let currentCodeTtlSeconds = DEFAULT_CODE_TTL_SECONDS;
+let currentToken = null;
+let isFetchingCode = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   overlay = document.getElementById('authOverlay');
@@ -20,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshBtn = document.getElementById('authRefresh');
   openerBtn = document.querySelector('[data-auth-open]');
   closeButtons = document.querySelectorAll('[data-auth-close]');
+  qrImageEl = document.getElementById('authQrImage');
+  qrPlaceholderEl = document.getElementById('authQrPlaceholder');
+  qrStatusEl = document.getElementById('authQrStatus');
 
   if (!overlay || !pinValueEl || !countdownEl || !progressEl || !openerBtn) {
     return;
@@ -40,7 +56,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  refreshBtn?.addEventListener('click', issueNewCode);
+  if (qrImageEl) {
+    qrImageEl.addEventListener('load', handleQrImageLoad);
+    qrImageEl.addEventListener('error', handleQrImageError);
+  }
+
+  refreshBtn?.addEventListener('click', () => {
+    if (isFetchingCode) return;
+    void issueNewCode();
+  });
 });
 
 function openOverlay() {
@@ -48,7 +72,7 @@ function openOverlay() {
   overlay.hidden = false;
   overlay.classList.add('is-visible');
   document.body.classList.add('overlay-open');
-  issueNewCode();
+  void issueNewCode();
 }
 
 function closeOverlay() {
@@ -56,18 +80,48 @@ function closeOverlay() {
   overlay.classList.remove('is-visible');
   overlay.setAttribute('hidden', '');
   document.body.classList.remove('overlay-open');
-
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
+  resetCountdown();
 }
 
-function issueNewCode() {
-  secondsRemaining = CODE_TTL_SECONDS;
-  pinValueEl.textContent = generatePin();
+async function issueNewCode() {
+  if (isFetchingCode) return;
+  isFetchingCode = true;
+  toggleRefreshButton(true);
+  setQrStatus('Trwa generowanie kodu...');
+  setQrLoadingState(true);
+  setPinValue('------');
+  resetCountdown();
+  secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
+  currentCodeTtlSeconds = DEFAULT_CODE_TTL_SECONDS;
   updateCountdownDisplay();
-  startCountdown();
+
+  try {
+    const response = await fetch(buildApiUrl('/api/pairing/generate'), {
+      method: 'POST'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    currentToken = data.token ?? null;
+    currentCodeTtlSeconds = Number.parseInt(data.expires_in_seconds, 10) || DEFAULT_CODE_TTL_SECONDS;
+    secondsRemaining = currentCodeTtlSeconds;
+
+    setPinValue(data.pin ?? '------');
+    updateCountdownDisplay();
+    startCountdown();
+    updateQrImage(currentToken);
+    setQrStatus('Zeskanuj kod w aplikacji mObywatel.');
+  } catch (error) {
+    console.error('Failed to generate QR code', error);
+    setQrStatus('Nie udało się pobrać kodu. Spróbuj ponownie.', true);
+  } finally {
+    isFetchingCode = false;
+    toggleRefreshButton(false);
+    setQrLoadingState(false);
+  }
 }
 
 function startCountdown() {
@@ -80,17 +134,26 @@ function startCountdown() {
     updateCountdownDisplay();
 
     if (secondsRemaining === 0) {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
+      resetCountdown();
     }
   }, 1000);
 }
 
+function resetCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+}
+
 function updateCountdownDisplay() {
   if (!countdownEl || !progressEl) return;
-  countdownEl.textContent = formatTime(secondsRemaining);
-  const progress = secondsRemaining / CODE_TTL_SECONDS;
-  progressEl.style.transform = `scaleX(${progress})`;
+  const safeSeconds = Math.max(secondsRemaining, 0);
+  countdownEl.textContent = formatTime(safeSeconds);
+
+  const total = currentCodeTtlSeconds || DEFAULT_CODE_TTL_SECONDS;
+  const progress = total ? safeSeconds / total : 0;
+  progressEl.style.transform = `scaleX(${Math.max(Math.min(progress, 1), 0)})`;
 }
 
 function formatTime(totalSeconds) {
@@ -99,7 +162,62 @@ function formatTime(totalSeconds) {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function generatePin() {
-  return Math.floor(100000 + Math.random() * 900000);
+function setPinValue(value) {
+  if (!pinValueEl) return;
+  pinValueEl.textContent = value;
+}
+
+function toggleRefreshButton(isDisabled) {
+  if (!refreshBtn) return;
+  refreshBtn.disabled = isDisabled;
+  if (isDisabled) {
+    refreshBtn.setAttribute('aria-busy', 'true');
+  } else {
+    refreshBtn.removeAttribute('aria-busy');
+  }
+}
+
+function setQrLoadingState(isLoading) {
+  if (!qrImageEl || !qrPlaceholderEl) return;
+  if (isLoading) {
+    qrImageEl.hidden = true;
+    qrPlaceholderEl.removeAttribute('hidden');
+  }
+}
+
+function setQrStatus(message = '', isError = false) {
+  if (!qrStatusEl) return;
+  qrStatusEl.textContent = message;
+  if (isError) {
+    qrStatusEl.dataset.state = 'error';
+  } else {
+    delete qrStatusEl.dataset.state;
+  }
+}
+
+function updateQrImage(token) {
+  if (!qrImageEl || !token) return;
+  const url = `${buildApiUrl(`/api/pairing/qr/${encodeURIComponent(token)}`)}?t=${Date.now()}`;
+  qrImageEl.hidden = true;
+  qrPlaceholderEl?.removeAttribute('hidden');
+  qrImageEl.src = url;
+}
+
+function handleQrImageLoad() {
+  if (!qrImageEl) return;
+  qrImageEl.hidden = false;
+  qrPlaceholderEl?.setAttribute('hidden', '');
+}
+
+function handleQrImageError() {
+  if (!qrImageEl) return;
+  qrImageEl.hidden = true;
+  qrPlaceholderEl?.removeAttribute('hidden');
+  setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', true);
+}
+
+function buildApiUrl(path) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
 }
 
