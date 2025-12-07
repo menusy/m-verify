@@ -323,3 +323,4 @@ class VerificationHistoryScreen extends StatefulWidget {
 
 **Szacowany czas:** ~4-5 godzin
 
+

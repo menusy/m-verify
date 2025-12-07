@@ -22,8 +22,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Funkcja do pobierania adresu IP - działa w serverless (Railway/Vercel)
+def get_client_ip(request: Request) -> str:
+    """Pobiera adres IP klienta, obsługując X-Forwarded-For dla serverless"""
+    # Sprawdź X-Forwarded-For (używany przez Railway/Vercel)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For może zawierać wiele IP, weź pierwsze
+        return forwarded_for.split(",")[0].strip()
+    
+    # Sprawdź X-Real-IP (alternatywny header)
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    
+    # Fallback do standardowej metody
+    if request.client:
+        return request.client.host
+    
+    # Ostateczny fallback
+    return "unknown"
+
 # Rate Limiting - ochrona przed nadużyciami
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

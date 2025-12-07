@@ -2,11 +2,24 @@ import './styles.css';
 
 const DEFAULT_CODE_TTL_SECONDS = 120;
 const API_BASE_URL = (() => {
+  // Sprawdź zmienną środowiskową
   const base = import.meta?.env?.VITE_API_BASE_URL ?? '';
-  if (!base) {
-    return '';
+  if (base) {
+    return base.replace(/\/+$/, '');
   }
-  return base.replace(/\/+$/, '');
+  
+  // Domyślny URL dla produkcji (Railway)
+  // W development użyj pustego stringa (względne ścieżki przez Vite proxy)
+  const isProduction = import.meta?.env?.MODE === 'production' || 
+                       window.location.hostname !== 'localhost' && 
+                       !window.location.hostname.includes('127.0.0.1');
+  
+  if (isProduction) {
+    return 'https://m-verify-production.up.railway.app';
+  }
+  
+  // Development - użyj względnych ścieżek (Vite proxy)
+  return '';
 })();
 
 let overlay;

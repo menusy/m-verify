@@ -153,3 +153,4 @@
 - ❌ Możliwość ponownej próby
 
 
+
