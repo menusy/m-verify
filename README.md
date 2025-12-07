@@ -1,231 +1,85 @@
-# Gov Project
+# mVerify – weryfikacja autentyczności stron gov.pl z pomocą mObywatel
 
-Projekt zawierający frontend, backend w Pythonie i API dostępne dla frontendu i aplikacji mobilnej.
+[👉 Zobacz demo wideo](https://youtube.com/shorts/TReF19UvBQk?feature=share)
 
-## Struktura projektu
+[![Demo wideo – mVerify](https://i.ibb.co/HpTwwZ7g/Screenshot-2025-12-07-at-10-57-47.png)](https://youtube.com/shorts/TReF19UvBQk?feature=share)
 
-```
-gov/
-├── backend/          # Backend w Pythonie (FastAPI)
-│   ├── main.py      # Główny plik aplikacji
-│   └── requirements.txt
-├── frontend/        # Frontend (HTML/CSS/JS)
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── mobile/          # Aplikacja mobilna Flutter
-│   ├── lib/
-│   │   ├── main.dart
-│   │   ├── screens/
-│   │   ├── services/
-│   │   └── widgets/
-│   └── pubspec.yaml
-├── assets/          # Zasoby (obrazy, ikony, itp.)
-└── README.md
-```
+## Opis projektu
 
-## Instalacja i uruchomienie
+Projekt realizuje wyzwanie **„Weryfikacja autentyczności stron gov.pl za pomocą aplikacji mObywatel”**.
 
-### Backend (Python)
+Tworzymy lekki moduł do osadzania na stronach gov.pl, który pozwala obywatelowi:
 
-1. Zainstaluj zależności:
-```bash
-cd backend
-pip install -r requirements.txt
-```
+- **sprawdzić, czy domena jest oficjalną domeną `.gov.pl`**,  
+- **upewnić się, że połączenie jest szyfrowane (HTTPS)**,  
+- **przeprowadzić końcową weryfikację w aplikacji mObywatel** za pomocą jednorazowego kodu QR / PIN (nonce),  
+- **zobaczyć czytelny wynik weryfikacji** w aplikacji i na stronie.
 
-2. Uruchom serwer:
-```bash
-python main.py
-```
+Projekt dostarcza **jeden, spójny mechanizm weryfikacji zaufania do strony**, który:
 
-Backend będzie dostępny na: `http://localhost:8000`
+- działa dokładnie tam, gdzie użytkownik ma wątpliwość – **bezpośrednio na stronie www**,  
+- wykorzystuje **oficjalne źródła** (rejestr domen .gov.pl, informacje o certyfikacie, aplikację mObywatel),  
+- prezentuje wynik w formie **prostego, wizualnego wskaźnika zaufania** (znak zaufania, komunikat „strona jest zaufana” / ostrzeżenie),  
+- prowadzi użytkownika **krok po kroku**: od kliknięcia przycisku na stronie, przez zeskanowanie kodu QR w mObywatelu, po jasny komunikat zwrotny w obu kanałach (na stronie i w aplikacji).
 
-3. Dokumentacja API (automatyczna):
-   - Swagger UI: `http://localhost:8000/docs`
-   - ReDoc: `http://localhost:8000/redoc`
+Dzięki temu odpowiedzialność za ocenę wiarygodności serwisu nie spada wyłącznie na „technikalia” (certyfikat, wygląd strony), ale jest **współdzielona** między użytkownika, stronę gov.pl i aplikację mObywatel, które wspólnie budują zaufanie do konkretnej domeny.
 
-### Frontend
+Projekt odpowiada też na problem po stronie instytucji publicznych. Dziś każda instytucja publikuje własne komunikaty o bezpieczeństwie, a działania edukacyjne są rozproszone i trudne do skalowania – szczególnie w sytuacjach kryzysowych (kampanie oszustw, fałszywe serwisy „na gorąco”).
 
-Frontend jest serwowany przez backend. Po uruchomieniu backendu:
+Zastosowanie jednego, wspólnego modułu weryfikacji oraz aplikacji mObywatel pozwala **ujednolicić sposób komunikowania zaufania** do stron rządowych w całej administracji. Dodatkowo, projekt przenosi uwagę użytkownika z technicznych szczegółów (np. analiza adresu URL, nagłówków certyfikatu) na **zrozumiały, wspólny język zaufania** – „ten serwis został potwierdzony w mObywatel”. To obniża barierę wejścia dla osób mniej technicznych, a jednocześnie zwiększa skuteczność ostrzeżeń przed fałszywymi witrynami, bo komunikat pochodzi z **jednego, zaufanego źródła** – oficjalnej aplikacji państwowej.
 
-1. Otwórz w przeglądarce: `http://localhost:8000/list`
+## Co zrobiliśmy do tej pory
 
-Frontend jest automatycznie dostępny przez backend na porcie 8000.
+### Przycisk zaufania na stronie
 
-### Aplikacja mobilna (Flutter)
+- Na każdej stronie z naszym modułem jest widoczny przycisk **„Zweryfikuj, czy jest oficjalna!”**.  
+- Po kliknięciu otwiera się okno z kodem QR i PIN‑em, które można zeskanować w mObywatel.
 
-1. Przejdź do katalogu aplikacji:
-```bash
-cd mobile
-```
+### „Znak zaufania” po pozytywnej weryfikacji
 
-2. Zainstaluj zależności:
-```bash
-flutter pub get
-```
+- Po udanym potwierdzeniu w mObywatel strona pamięta, że użytkownik zweryfikował tę domenę.  
+- Użytkownik otrzymuje wizualny **badge / znak zaufania**, który potwierdza, że jest „na dobrej stronie”.
 
-3. Skonfiguruj adres API w `lib/services/api_service.dart`:
-   - Emulator Android: `http://10.0.2.2:8000`
-   - Emulator iOS: `http://localhost:8000`
-   - Prawdziwe urządzenie: `http://192.168.1.X:8000` (IP komputera)
+### Bezpieczny kod QR / PIN
 
-4. Uruchom aplikację:
-```bash
-flutter run
-```
+- Kod działa tylko przez kilka minut, po czym wygasa.  
+- Użytkownik widzi jasny komunikat: kiedy kod jest aktywny, a kiedy trzeba wygenerować nowy – **bez straszenia wygaśnięciem**, jeśli to tylko błąd połączenia.
 
-Więcej informacji w [mobile/README.md](mobile/README.md)
+### Panel bezpieczeństwa serwisu (FAB z tarczą)
 
-## API Endpoints
+- W lewym dolnym rogu strony jest **pływający przycisk z tarczą (FAB)**.  
+- Po kliknięciu pokazuje się mały panel, który w jednym miejscu zbiera podstawowe informacje:
+  - na jakiej **domenie** jesteś,  
+  - czy połączenie jest zabezpieczone **HTTPS**,  
+  - prosty **wskaźnik zaufania** do tej domeny,  
+  - link do **kompendium oficjalnych stron gov.pl**.
 
-### Podstawowe
-- `GET /` - Informacje o API
-- `GET /health` - Sprawdzenie stanu API
+### Sprawdzenie domeny w tle
 
-### Items (CRUD)
-- `GET /api/items` - Pobierz wszystkie elementy
-- `GET /api/items/{id}` - Pobierz konkretny element
-- `POST /api/items` - Utwórz nowy element
-- `PUT /api/items/{id}` - Zaktualizuj element
-- `DELETE /api/items/{id}` - Usuń element
+- Moduł sam, „pod maską”, sprawdza w przygotowanej liście, czy dana domena jest oficjalną domeną `.gov.pl`.  
+- Użytkownik dostaje z tego tylko prosty efekt: komunikat **„domena zweryfikowana / niezweryfikowana”** i procentowy poziom zaufania.
 
-### Parowanie QR Code i PIN (dla aplikacji mobilnej)
-- `POST /api/pairing/generate` - Generuje nowy unikalny kod QR i 6-cyfrowy PIN (ważny 5 minut)
-- `GET /api/pairing/qr/{token}` - Zwraca obrazek QR code dla tokenu
-- `GET /api/pairing/status/{token}` - Sprawdza status parowania (pending/confirmed/expired)
-- `POST /api/pairing/confirm` - Potwierdza parowanie z aplikacji mobilnej (użyj `token` z QR lub `pin`)
+### Współpraca ze skanerem w mObywatelu
 
-### Przykładowe żądania
+W aplikacji mobilnej można:
 
-**Utworzenie elementu:**
-```bash
-curl -X POST "http://localhost:8000/api/items" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test", "description": "Opis testowy"}'
-```
+- zeskanować kod QR z ekranu,  
+- albo wpisać 6‑cyfrowy PIN z przeglądarki.
 
-**Pobranie wszystkich elementów:**
-```bash
-curl "http://localhost:8000/api/items"
-```
+Aplikacja pokazuje wyraźnie:
 
-## System parowania QR Code
+- **zielony scenariusz** – ta strona jest zaufana,  
+- **czerwony scenariusz** – coś jest nie tak, uważaj i nie podawaj danych.
 
-System umożliwia parowanie aplikacji mobilnej ze stroną internetową poprzez kod QR.
+W panelu bezpieczeństwa na stronie zmienia się treść na:
 
-### Jak to działa:
+- "ta domena została zweryfikowana w mObywatel",  
+- pojawia się widoczny **badge / znak zaufania**, który daje użytkownikowi spokój, że jest „na dobrej stronie”.
 
-1. **Użytkownik klika przycisk CTA** na stronie internetowej (`http://localhost:8000/list`)
-2. **Generuje się unikalny kod QR i 6-cyfrowy kod PIN** ważny przez 5 minut
-3. **Aplikacja mobilna może:**
-   - **Zeskanować kod QR** - otrzymuje token
-   - **LUB wpisać 6-cyfrowy kod PIN** - aplikacja używa PIN do parowania
-4. **Aplikacja mobilna wysyła potwierdzenie** do API z tokenem (z QR) lub PIN
-5. **Strona internetowa automatycznie wykrywa** potwierdzenie i wyświetla komunikat sukcesu
+### W skrócie
 
-### Flow dla aplikacji mobilnej:
+Z poziomu **jednej strony www** użytkownik może:
 
-**Opcja 1: Skanowanie QR code**
-```javascript
-// 1. Użytkownik skanuje QR code - otrzymuje token
-const token = "token_z_qr_code";
-
-// 2. Wyślij potwierdzenie parowania
-const response = await fetch('http://localhost:8000/api/pairing/confirm', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    token: token,  // użyj token z QR code
-    device_id: "unique_device_id",  // opcjonalne
-    device_name: "iPhone 15"        // opcjonalne
-  })
-});
-```
-
-**Opcja 2: Wpisanie 6-cyfrowego kodu PIN**
-```javascript
-// 1. Użytkownik wpisuje 6-cyfrowy kod PIN (np. "123456")
-const pin = "123456";
-
-// 2. Wyślij potwierdzenie parowania
-const response = await fetch('http://localhost:8000/api/pairing/confirm', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    pin: pin,  // użyj PIN zamiast token
-    device_id: "unique_device_id",  // opcjonalne
-    device_name: "iPhone 15"        // opcjonalne
-  })
-});
-```
-
-### Przykład użycia w aplikacji mobilnej:
-
-**React Native / Flutter / Native:**
-- Base URL: `http://localhost:8000` (lub adres serwera produkcyjnego)
-- **Opcja 1:** Użyj biblioteki do skanowania QR (np. `react-native-qrcode-scanner`, `qr_code_scanner` w Flutter)
-- **Opcja 2:** Pozwól użytkownikowi wpisać 6-cyfrowy kod PIN wyświetlony na stronie
-- Po zeskanowaniu QR lub wpisaniu PIN wyślij POST do `/api/pairing/confirm` z tokenem lub PIN
-
-**Przykłady z curl:**
-
-```bash
-# Potwierdź parowanie używając tokenu z QR code
-curl -X POST "http://localhost:8000/api/pairing/confirm" \
-  -H "Content-Type: application/json" \
-  -d '{"token": "YOUR_TOKEN_HERE", "device_id": "device123", "device_name": "Test Device"}'
-
-# Potwierdź parowanie używając 6-cyfrowego PIN
-curl -X POST "http://localhost:8000/api/pairing/confirm" \
-  -H "Content-Type: application/json" \
-  -d '{"pin": "123456", "device_id": "device123", "device_name": "Test Device"}'
-```
-
-**Uwaga:** Możesz użyć **albo** `token` **albo** `pin` w żądaniu - nie oba jednocześnie.
-
-## Użycie z aplikacji mobilnej
-
-API jest gotowe do użycia z aplikacji mobilnej. Wszystkie endpoints są dostępne przez HTTP/HTTPS i zwracają dane w formacie JSON.
-
-Przykład użycia w aplikacji mobilnej (React Native / Flutter / Native):
-- Base URL: `http://localhost:8000` (lub adres serwera produkcyjnego)
-- Wszystkie endpoints wymagają nagłówka `Content-Type: application/json`
-- Odpowiedzi są w formacie JSON
-
-## CORS
-
-Backend jest skonfigurowany z CORS, aby umożliwić żądania z:
-- Frontendu (dowolna domena)
-- Aplikacji mobilnej
-
-**Uwaga:** W produkcji zmień `allow_origins=["*"]` na konkretne domeny w pliku `backend/main.py`.
-
-## Rozwój
-
-### Dodawanie nowych endpointów
-
-Edytuj plik `backend/main.py` i dodaj nowe funkcje z dekoratorami `@app.get()`, `@app.post()`, itp.
-
-### Modyfikacja frontendu
-
-Edytuj pliki w katalogu `frontend/`:
-- `index.html` - struktura HTML
-- `styles.css` - style CSS
-- `app.js` - logika JavaScript i komunikacja z API
-
-## Produkcja
-
-Przed wdrożeniem na produkcję:
-
-1. Zmień `allow_origins` w CORS na konkretne domeny
-2. Użyj prawdziwej bazy danych zamiast listy w pamięci
-3. Dodaj autentykację i autoryzację
-4. Skonfiguruj HTTPS
-5. Dodaj logowanie i monitoring
-6. Skonfiguruj zmienne środowiskowe dla konfiguracji
-
+- zobaczyć podstawowe informacje o bezpieczeństwie,  
+- potwierdzić stronę w mObywatel,  
+- dostać prosty, czytelny znak: **„tej stronie możesz ufać”** albo **„uważaj”**.
