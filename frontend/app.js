@@ -289,6 +289,14 @@ function startCountdown() {
     // Pozwól API polling sprawdzić rzeczywisty status kodu
     // Komunikat pojawi się tylko gdy API potwierdzi wygaśnięcie (status "expired")
     // Nie wywołuj handleRefreshThreshold - przycisk pokaże się tylko gdy kod wygasł
+    // WAŻNE: Gdy countdown osiągnie 0, nie pokazuj komunikatu wygaśnięcia
+    // Poczekaj na potwierdzenie z API (status "expired" lub kod 404/410)
+    if (secondsRemaining <= 0) {
+      // Zatrzymaj countdown, ale nie pokazuj komunikatu wygaśnięcia
+      // Status polling sprawdzi rzeczywisty status kodu
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
   }, 1000);
 }
 
@@ -445,6 +453,9 @@ function handleQrImageError() {
   console.error('QR image error - image src:', qrImageEl.src);
   qrImageEl.hidden = true;
   // Placeholder removed - no longer needed
+  // WAŻNE: Nie pokazuj komunikatu wygaśnięcia przy błędzie ładowania obrazu
+  // To może być błąd sieciowy, a kod może być nadal aktywny
+  setQrExpiredState(false);
   setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', 'error');
 }
 
@@ -503,6 +514,8 @@ async function fetchPairingStatus(token) {
       // Dla innych błędów (500, timeout, itp.) nie pokazuj komunikatu wygaśnięcia
       // Kod może być nadal aktywny, tylko wystąpił błąd serwera
       console.error(`Status request failed with ${response.status}`);
+      // WAŻNE: Ukryj komunikat wygaśnięcia przy błędach serwera - kod może być nadal aktywny
+      setQrExpiredState(false);
       return;
     }
     const data = await response.json();
@@ -511,6 +524,8 @@ async function fetchPairingStatus(token) {
     // Błąd sieciowy - nie pokazuj komunikatu wygaśnięcia
     // Kod może być nadal aktywny, tylko wystąpił problem z połączeniem
     console.error('Failed to fetch pairing status', error);
+    // WAŻNE: Ukryj komunikat wygaśnięcia przy błędach sieciowych - kod może być nadal aktywny
+    setQrExpiredState(false);
     // Nie wywołuj handleCodeExpired() - kod może być nadal aktywny
   }
 }
@@ -563,6 +578,8 @@ function handlePairingStatusResponse(data) {
         // Zatrzymaj countdown, ale nie pokazuj komunikatu
         secondsRemaining = 0;
         updateCountdownDisplay();
+        // WAŻNE: Ukryj komunikat wygaśnięcia - kod może być nadal aktywny
+        setQrExpiredState(false);
         // Nie resetuj countdown - poczekaj na potwierdzenie z API
       }
     }
