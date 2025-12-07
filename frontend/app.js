@@ -460,12 +460,8 @@ function setQrExpiredState(isExpired) {
 }
 
 function handleRefreshThreshold(currentSeconds) {
+  // Pokaż przycisk odświeżania tylko gdy odliczanie dojdzie do 0
   if (currentSeconds <= 0) {
-    setRefreshButtonVisibility(true);
-    return;
-  }
-
-  if (currentSeconds <= REFRESH_WARNING_THRESHOLD_SECONDS) {
     setRefreshButtonVisibility(true);
   } else {
     setRefreshButtonVisibility(false);
