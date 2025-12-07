@@ -2,6 +2,7 @@ import './styles.css';
 
 const DEFAULT_CODE_TTL_SECONDS = 120;
 const REFRESH_WARNING_THRESHOLD_SECONDS = 30;
+const STATUS_POLL_INTERVAL_MS = 3000;
 const API_BASE_URL = (() => {
   // Sprawdź zmienną środowiskową
   const base = import.meta?.env?.VITE_API_BASE_URL ?? '';
@@ -34,11 +35,14 @@ let qrImageEl;
 let qrStatusEl;
 let qrExpiredEl;
 let qrOverlayRefreshBtn;
+let qrPlaceholderEl;
 let countdownInterval = null;
 let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
 let currentCodeTtlSeconds = DEFAULT_CODE_TTL_SECONDS;
 let currentToken = null;
 let isFetchingCode = false;
+let statusPollingInterval = null;
+let hasShownSuccessNotification = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded - initializing...');
@@ -54,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   qrStatusEl = document.getElementById('authQrStatus');
   qrExpiredEl = document.getElementById('authQrExpired');
   qrOverlayRefreshBtn = document.getElementById('authQrOverlayRefresh');
+  qrPlaceholderEl = document.getElementById('authQrPlaceholder');
 
   console.log('Elements found:', {
     overlay: !!overlay,
@@ -120,11 +125,14 @@ function closeOverlay() {
   overlay.classList.remove('is-visible');
   overlay.setAttribute('hidden', '');
   document.body.classList.remove('overlay-open');
+  stopStatusPolling();
   resetCountdown();
 }
 
 async function issueNewCode() {
   if (isFetchingCode) return;
+  stopStatusPolling();
+  hasShownSuccessNotification = false;
   isFetchingCode = true;
   toggleRefreshButton(true);
   setRefreshButtonVisibility(false);
@@ -165,7 +173,7 @@ async function issueNewCode() {
     // Walidacja tokenu z API
     if (!data.token || typeof data.token !== 'string' || data.token.trim() === '') {
       console.error('Invalid token from API:', data);
-      setQrStatus('Błąd: Nieprawidłowy token z serwera. Spróbuj ponownie.', true);
+      setQrStatus('Błąd: Nieprawidłowy token z serwera. Spróbuj ponownie.', 'error');
       currentToken = null;
       return;
     }
@@ -185,9 +193,10 @@ async function issueNewCode() {
     console.log('Calling updateQrImage with token:', currentToken.substring(0, 20) + '...');
     updateQrImage(currentToken);
     setQrStatus('Zeskanuj kod w aplikacji mObywatel.');
+    startStatusPolling(currentToken);
   } catch (error) {
     console.error('Failed to generate QR code', error);
-    setQrStatus(`Nie udało się pobrać kodu: ${error.message}. Spróbuj ponownie.`, true);
+    setQrStatus(`Nie udało się pobrać kodu: ${error.message}. Spróbuj ponownie.`, 'error');
     currentToken = null;
   } finally {
     isFetchingCode = false;
@@ -271,14 +280,14 @@ function setQrLoadingState(isLoading) {
   }
 }
 
-function setQrStatus(message = '', isError = false) {
+function setQrStatus(message = '', state = 'default') {
   if (!qrStatusEl) return;
   qrStatusEl.textContent = message;
-  if (isError) {
-    qrStatusEl.dataset.state = 'error';
-  } else {
+  if (!state || state === 'default') {
     delete qrStatusEl.dataset.state;
+    return;
   }
+  qrStatusEl.dataset.state = state;
 }
 
 function updateQrImage(token) {
@@ -289,14 +298,14 @@ function updateQrImage(token) {
 
   if (!token || typeof token !== 'string' || token.trim() === '') {
     console.error('updateQrImage: Invalid token', { token, type: typeof token });
-    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', true);
+    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', 'error');
     return;
   }
 
   // Walidacja tokenu - powinien być długim stringiem, nie "token"
   if (token === 'token' || token.length < 10) {
     console.error('updateQrImage: Token looks invalid', { token, length: token.length });
-    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', true);
+    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', 'error');
     return;
   }
   const url = `${buildApiUrl(`/api/pairing/qr/${encodeURIComponent(token)}`)}?t=${Date.now()}`;
@@ -366,7 +375,7 @@ function handleQrImageError() {
   console.error('QR image error - image src:', qrImageEl.src);
   qrImageEl.hidden = true;
   // Placeholder removed - no longer needed
-  setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', true);
+  setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', 'error');
 }
 
 function setQrExpiredState(isExpired) {
@@ -396,9 +405,91 @@ function handleRefreshThreshold(currentSeconds) {
 
 function handleCodeExpired() {
   resetCountdown();
+  stopStatusPolling();
   setQrExpiredState(true);
   setRefreshButtonVisibility(true);
   setQrStatus('Kod wygasł. Odśwież, aby wygenerować nowy.');
+}
+
+function startStatusPolling(token) {
+  if (!token) return;
+  stopStatusPolling();
+  statusPollingInterval = setInterval(() => {
+    void fetchPairingStatus(token);
+  }, STATUS_POLL_INTERVAL_MS);
+  void fetchPairingStatus(token);
+}
+
+function stopStatusPolling() {
+  if (!statusPollingInterval) return;
+  clearInterval(statusPollingInterval);
+  statusPollingInterval = null;
+}
+
+async function fetchPairingStatus(token) {
+  if (!token) return;
+  const statusUrl = buildApiUrl(`/api/pairing/status/${encodeURIComponent(token)}`);
+  try {
+    const response = await fetch(statusUrl);
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 410) {
+        handleCodeExpired();
+        return;
+      }
+      throw new Error(`Status request failed with ${response.status}`);
+    }
+    const data = await response.json();
+    handlePairingStatusResponse(data);
+  } catch (error) {
+    console.error('Failed to fetch pairing status', error);
+  }
+}
+
+function handlePairingStatusResponse(data) {
+  if (!data) return;
+  const { status, verification_result: verificationResult } = data;
+  if (status === 'confirmed') {
+    const successMessage =
+      verificationResult?.message ?? 'Autoryzacja przebiegła poprawnie.';
+    setQrExpiredState(false);
+    setRefreshButtonVisibility(false);
+    setQrStatus(successMessage, 'success');
+    notifyBrowserSuccess(successMessage);
+    stopStatusPolling();
+    resetCountdown();
+    return;
+  }
+  if (status === 'expired') {
+    handleCodeExpired();
+    return;
+  }
+  setQrStatus('Oczekiwanie na potwierdzenie w aplikacji mObywatel...', 'pending');
+}
+
+function notifyBrowserSuccess(message) {
+  if (hasShownSuccessNotification) return;
+  hasShownSuccessNotification = true;
+  const displayMessage = message || 'Autoryzacja przebiegła poprawnie.';
+  if (typeof window === 'undefined') return;
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      new Notification('mVerify', { body: displayMessage });
+      return;
+    }
+    if (Notification.permission !== 'denied') {
+      Notification.requestPermission()
+        .then((permission) => {
+          if (permission === 'granted') {
+            new Notification('mVerify', { body: displayMessage });
+          } else {
+            window.alert(displayMessage);
+          }
+        })
+        .catch(() => window.alert(displayMessage));
+      return;
+    }
+  }
+  window.alert(displayMessage);
 }
 
 function buildApiUrl(path) {
