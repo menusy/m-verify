@@ -493,5 +493,5 @@ if ASSETS_DIR.exists() and not (FRONTEND_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets_original")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
 

@@ -64,6 +64,19 @@ body.overlay-open {
 .authenticity-trigger span {
   font-size: 0.85rem;
   color: rgba(4, 29, 72, 0.7);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.verification-cookie-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 0.25rem;
+  opacity: 0.8;
 }
 
 body.overlay-open .authenticity-trigger {
@@ -119,6 +132,13 @@ body.overlay-open .authenticity-trigger {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
   margin-bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.auth-card__eyebrow .verification-cookie-icon {
+  opacity: 0.7;
 }
 
 .auth-card__subtitle {
