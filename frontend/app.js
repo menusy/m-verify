@@ -37,6 +37,7 @@ let codeExpiredModal;
 let expiredModalRefreshBtn;
 let expiredModalCloseBtn;
 let qrPlaceholderEl;
+let securityInfoFab;
 let countdownInterval = null;
 let secondsRemaining = DEFAULT_CODE_TTL_SECONDS;
 let currentCodeTtlSeconds = DEFAULT_CODE_TTL_SECONDS;
@@ -127,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
   expiredModalRefreshBtn = document.getElementById('expiredModalRefresh');
   expiredModalCloseBtn = document.getElementById('expiredModalClose');
   qrPlaceholderEl = document.getElementById('authQrPlaceholder');
+  securityInfoFab = document.getElementById('securityInfoFab');
 
   console.log('Elements found:', {
     overlay: !!overlay,
@@ -136,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openerBtn: !!openerBtn,
     qrImageEl: !!qrImageEl,
     qrStatusEl: !!qrStatusEl,
+    securityInfoFab: !!securityInfoFab,
     API_BASE_URL: API_BASE_URL
   });
 
@@ -191,11 +194,107 @@ document.addEventListener('DOMContentLoaded', () => {
       closeExpiredModal();
     }
   });
-
-
   // Sprawdź cookie weryfikacji przy ładowaniu strony
   checkVerificationCookie();
+  // Przygotuj dane modułu bezpieczeństwa (bez pokazywania)
+  initSecurityPanel();
+
+  // Floating Action Button - otwieranie/zamykanie panelu bezpieczeństwa
+  securityInfoFab?.addEventListener('click', () => {
+    const panel = document.getElementById('securityInfoPanel');
+    if (!panel) return;
+
+    const isHidden = panel.hasAttribute('hidden');
+    if (isHidden) {
+      panel.removeAttribute('hidden');
+      // Odśwież informacje przy każdym otwarciu
+      void updateSecurityInfo();
+    } else {
+      panel.setAttribute('hidden', '');
+    }
+  });
 });
+
+// Panel bezpieczeństwa - weryfikacja domeny i SSL
+async function initSecurityPanel() {
+  const panel = document.getElementById('securityInfoPanel');
+  if (!panel) {
+    console.warn('Security info panel not found in DOM');
+    return;
+  }
+
+  const domainNameEl = document.getElementById('domainName');
+  const httpsStatusEl = document.getElementById('httpsStatus');
+
+  // Ustaw aktualną domenę
+  const currentDomain = window.location.hostname || '-';
+  if (domainNameEl) {
+    domainNameEl.textContent = currentDomain;
+  }
+
+  // Informacja o HTTPS
+  const isHttps = window.location.protocol === 'https:';
+  if (httpsStatusEl) {
+    httpsStatusEl.textContent = isHttps ? 'Aktywne' : 'Nieaktywne';
+  }
+
+  // Ustaw stan "Sprawdzanie..." i wywołaj weryfikację domeny po stronie backendu
+  void updateSecurityInfo();
+}
+
+async function updateSecurityInfo() {
+  const domainStatusEl = document.getElementById('domainStatus');
+  const domainStatusIconEl = document.getElementById('domainStatusIcon');
+  const trustScoreEl = document.getElementById('trustScore');
+
+  const currentDomain = window.location.hostname;
+  if (!currentDomain || !domainStatusEl || !trustScoreEl) {
+    return;
+  }
+
+  // Reset klas statusu
+  domainStatusEl.classList.remove('verified', 'unverified', 'checking');
+  domainStatusEl.textContent = 'Sprawdzanie...';
+  domainStatusEl.classList.add('checking');
+
+  try {
+    const apiUrl = buildApiUrl(`/api/domain/verify?domain=${encodeURIComponent(currentDomain)}`);
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error(`Status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const isOfficial = Boolean(data.is_official);
+    const trustScore = typeof data.trust_score === 'number' ? data.trust_score : (isOfficial ? 100 : 0);
+
+    // Ustaw status domeny (.gov.pl + czy jest na liście)
+    domainStatusEl.classList.remove('verified', 'unverified', 'checking');
+    if (isOfficial) {
+      domainStatusEl.textContent = 'Zweryfikowana';
+      domainStatusEl.classList.add('verified');
+      if (domainStatusIconEl) {
+        domainStatusIconEl.textContent = '✓';
+      }
+    } else {
+      domainStatusEl.textContent = 'Niezweryfikowana';
+      domainStatusEl.classList.add('unverified');
+      if (domainStatusIconEl) {
+        domainStatusIconEl.textContent = '⚠️';
+      }
+    }
+
+    // Wskaźnik zaufania
+    trustScoreEl.textContent = `${trustScore}%`;
+  } catch (error) {
+    console.error('Failed to verify domain:', error);
+    domainStatusEl.classList.remove('verified', 'checking');
+    domainStatusEl.classList.add('unverified');
+    domainStatusEl.textContent = 'Błąd sprawdzania';
+    trustScoreEl.textContent = 'Nieznany';
+  }
+}
 
 function openOverlay() {
   console.log('openOverlay called');

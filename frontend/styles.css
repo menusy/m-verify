@@ -18,6 +18,56 @@ body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
+.landing {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+}
+
+.landing-hero {
+  max-width: 720px;
+  width: 100%;
+}
+
+.landing-hero__content {
+  background: linear-gradient(160deg, rgba(9, 24, 54, 0.9), rgba(5, 16, 35, 0.95));
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 40px 80px rgba(1, 5, 15, 0.7);
+}
+
+.landing-hero h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 700;
+}
+
+.landing-hero__lead {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.landing-hero__list {
+  margin: 0 0 1.5rem;
+  padding-left: 1.2rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+}
+
+.landing-hero__list li + li {
+  margin-top: 0.4rem;
+}
+
+.landing-hero__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 body.overlay-open {
   overflow: hidden;
 }
@@ -522,5 +572,38 @@ body.overlay-open .authenticity-trigger {
     width: auto;
     bottom: calc(2rem + 80px);
   }
+}
+
+/* Floating action button do otwierania panelu bezpieczeństwa */
+.security-info-fab {
+  position: fixed;
+  top: auto;
+  left: 2rem;
+  bottom: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--blue-dark);
+  font-weight: 800;
+  font-size: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 20px 40px rgba(0, 12, 40, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.security-info-fab:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 60px rgba(0, 12, 40, 0.7);
+  background: #ffffff;
+}
+
+.security-info-fab:active {
+  transform: translateY(0);
 }
 
