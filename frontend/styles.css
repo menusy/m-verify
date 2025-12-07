@@ -74,13 +74,18 @@ body.modal-open {
 }
 
 .verification-cookie-icon {
-  width: 32px;
-  height: 32px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
   display: inline-block;
   vertical-align: middle;
-  margin-left: 0.25rem;
-  opacity: 0.8;
+  margin-left: 0.75rem;
+  opacity: 0.9;
+  transition: transform 0.2s ease;
+}
+
+.verification-cookie-icon:hover {
+  transform: scale(1.1);
 }
 
 body.overlay-open .authenticity-trigger {

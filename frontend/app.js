@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Obsługa Escape - najpierw modal wygaśnięcia, potem główny overlay
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       // Najpierw zamknij modal wygaśnięcia, jeśli jest otwarty
@@ -191,12 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Zamknij modal przy naciśnięciu Escape
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && codeExpiredModal && !codeExpiredModal.hasAttribute('hidden')) {
-      closeExpiredModal();
-    }
-  });
 
   // Sprawdź cookie weryfikacji przy ładowaniu strony
   checkVerificationCookie();
