@@ -31,7 +31,6 @@ let refreshBtn;
 let openerBtn;
 let closeButtons;
 let qrImageEl;
-let qrPlaceholderEl;
 let qrStatusEl;
 let qrExpiredEl;
 let qrOverlayRefreshBtn;
@@ -42,6 +41,8 @@ let currentToken = null;
 let isFetchingCode = false;
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded - initializing...');
+
   overlay = document.getElementById('authOverlay');
   pinValueEl = document.getElementById('authPinValue');
   countdownEl = document.getElementById('authCountdown');
@@ -50,12 +51,23 @@ document.addEventListener('DOMContentLoaded', () => {
   openerBtn = document.querySelector('[data-auth-open]');
   closeButtons = document.querySelectorAll('[data-auth-close]');
   qrImageEl = document.getElementById('authQrImage');
-  qrPlaceholderEl = document.getElementById('authQrPlaceholder');
   qrStatusEl = document.getElementById('authQrStatus');
   qrExpiredEl = document.getElementById('authQrExpired');
   qrOverlayRefreshBtn = document.getElementById('authQrOverlayRefresh');
 
+  console.log('Elements found:', {
+    overlay: !!overlay,
+    pinValueEl: !!pinValueEl,
+    countdownEl: !!countdownEl,
+    progressEl: !!progressEl,
+    openerBtn: !!openerBtn,
+    qrImageEl: !!qrImageEl,
+    qrStatusEl: !!qrStatusEl,
+    API_BASE_URL: API_BASE_URL
+  });
+
   if (!overlay || !pinValueEl || !countdownEl || !progressEl || !openerBtn) {
+    console.error('Missing required elements!');
     return;
   }
 
@@ -91,7 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function openOverlay() {
-  if (!overlay) return;
+  console.log('openOverlay called');
+  if (!overlay) {
+    console.error('openOverlay: overlay is missing');
+    return;
+  }
+  console.log('Opening overlay and generating QR code...');
   overlay.hidden = false;
   overlay.classList.add('is-visible');
   document.body.classList.add('overlay-open');
@@ -121,15 +138,38 @@ async function issueNewCode() {
   updateCountdownDisplay();
 
   try {
-    const response = await fetch(buildApiUrl('/api/pairing/generate'), {
-      method: 'POST'
+    const apiUrl = buildApiUrl('/api/pairing/generate');
+    console.log('Generating QR code, API URL:', apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
 
+    console.log('Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      const errorText = await response.text();
+      console.error('API Error:', response.status, errorText);
+      throw new Error(`Request failed with status ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
+
+   console.log('QR code generated, full response:', data);
+    console.log('Token received:', data.token ? data.token.substring(0, 20) + '...' : 'MISSING');
+    console.log('Token type:', typeof data.token, 'Token length:', data.token?.length);
+
+    // Walidacja tokenu z API
+    if (!data.token || typeof data.token !== 'string' || data.token.trim() === '') {
+      console.error('Invalid token from API:', data);
+      setQrStatus('Błąd: Nieprawidłowy token z serwera. Spróbuj ponownie.', true);
+      currentToken = null;
+      return;
+    }
+
     currentToken = data.token ?? null;
     const apiTtl = Number.parseInt(data.expires_in_seconds, 10);
     currentCodeTtlSeconds = Number.isFinite(apiTtl)
@@ -140,11 +180,15 @@ async function issueNewCode() {
     setPinValue(data.pin ?? '------');
     updateCountdownDisplay();
     startCountdown();
+
+    // Wywołaj updateQrImage z walidacją
+    console.log('Calling updateQrImage with token:', currentToken.substring(0, 20) + '...');
     updateQrImage(currentToken);
     setQrStatus('Zeskanuj kod w aplikacji mObywatel.');
   } catch (error) {
     console.error('Failed to generate QR code', error);
-    setQrStatus('Nie udało się pobrać kodu. Spróbuj ponownie.', true);
+    setQrStatus(`Nie udało się pobrać kodu: ${error.message}. Spróbuj ponownie.`, true);
+    currentToken = null;
   } finally {
     isFetchingCode = false;
     toggleRefreshButton(false);
@@ -217,10 +261,13 @@ function toggleRefreshButton(isDisabled) {
 }
 
 function setQrLoadingState(isLoading) {
-  if (!qrImageEl || !qrPlaceholderEl) return;
+  if (!qrImageEl) return;
   if (isLoading) {
-    qrImageEl.hidden = true;
-    qrPlaceholderEl.removeAttribute('hidden');
+    qrImageEl.style.opacity = '0.3';
+    qrImageEl.style.filter = 'blur(2px)';
+  } else {
+    qrImageEl.style.opacity = '1';
+    qrImageEl.style.filter = 'none';
   }
 }
 
@@ -235,24 +282,90 @@ function setQrStatus(message = '', isError = false) {
 }
 
 function updateQrImage(token) {
-  if (!qrImageEl || !token) return;
+ if (!qrImageEl) {
+    console.error('updateQrImage: qrImageEl is missing');
+    return;
+  }
+
+  if (!token || typeof token !== 'string' || token.trim() === '') {
+    console.error('updateQrImage: Invalid token', { token, type: typeof token });
+    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', true);
+    return;
+  }
+
+  // Walidacja tokenu - powinien być długim stringiem, nie "token"
+  if (token === 'token' || token.length < 10) {
+    console.error('updateQrImage: Token looks invalid', { token, length: token.length });
+    setQrStatus('Błąd: Nieprawidłowy token. Spróbuj ponownie.', true);
+    return;
+  }
   const url = `${buildApiUrl(`/api/pairing/qr/${encodeURIComponent(token)}`)}?t=${Date.now()}`;
-  qrImageEl.hidden = true;
-  qrPlaceholderEl?.removeAttribute('hidden');
-  setQrExpiredState(false);
+  console.log('Loading QR image from:', url);
+  console.log('Token used:', token.substring(0, 20) + '...');
+
+  // Pokaż obraz (może być pusty na początku, ale element jest widoczny)
+  qrImageEl.hidden = false;
+  qrImageEl.removeAttribute('hidden');
+  qrImageEl.style.display = 'block';
+  qrImageEl.style.opacity = '0.5'; // Półprzezroczysty podczas ładowania
+
+  // Reset error state
+  qrImageEl.onerror = null;
+  qrImageEl.onload = null;
+
+  // Set up error handler
+  qrImageEl.onerror = function() {
+    console.error('Failed to load QR image from:', url);
+    handleQrImageError();
+  };
+
+  // Set up load handler
+  qrImageEl.onload = function() {
+    console.log('QR image onload event fired');
+    handleQrImageLoad();
+  };
+
+  console.log('Setting QR image src to:', url);
   qrImageEl.src = url;
+  // Sprawdź czy obraz jest już załadowany (może być w cache)
+  if (qrImageEl.complete && qrImageEl.naturalHeight !== 0) {
+    console.log('QR image already loaded from cache');
+    handleQrImageLoad();
+  }
 }
 
 function handleQrImageLoad() {
-  if (!qrImageEl) return;
+  console.log('handleQrImageLoad: QR image loaded successfully!');
+  if (!qrImageEl) {
+    console.error('handleQrImageLoad: qrImageEl is missing');
+    return;
+  }
+  console.log('Showing QR image');
+
+  // Upewnij się, że obraz jest w pełni widoczny
   qrImageEl.hidden = false;
-  qrPlaceholderEl?.setAttribute('hidden', '');
+  qrImageEl.removeAttribute('hidden');
+  qrImageEl.style.display = 'block';
+  qrImageEl.style.visibility = 'visible';
+  qrImageEl.style.opacity = '1'; // Pełna nieprzezroczystość
+
+  console.log('QR image should now be visible', {
+    qrImageElHidden: qrImageEl.hidden,
+    qrImageElDisplay: window.getComputedStyle(qrImageEl).display,
+    qrImageElVisibility: window.getComputedStyle(qrImageEl).visibility,
+    qrImageElOpacity: window.getComputedStyle(qrImageEl).opacity,
+    qrImageElSrc: qrImageEl.src.substring(0, 80) + '...',
+    qrImageElComplete: qrImageEl.complete,
+    qrImageElNaturalWidth: qrImageEl.naturalWidth,
+    qrImageElNaturalHeight: qrImageEl.naturalHeight
+  });
 }
 
 function handleQrImageError() {
   if (!qrImageEl) return;
+  console.error('QR image error - image src:', qrImageEl.src);
   qrImageEl.hidden = true;
-  qrPlaceholderEl?.removeAttribute('hidden');
+  // Placeholder removed - no longer needed
   setQrStatus('Nie udało się wczytać obrazu QR. Użyj przycisku „Odśwież”.', true);
 }
 
@@ -290,6 +403,8 @@ function handleCodeExpired() {
 
 function buildApiUrl(path) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE_URL}${normalizedPath}`;
+  const fullUrl = `${API_BASE_URL}${normalizedPath}`;
+  console.log('buildApiUrl:', { path, API_BASE_URL, fullUrl });
+  return fullUrl;
 }
 
