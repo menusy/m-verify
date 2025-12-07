@@ -1,0 +1,594 @@
+{
+  "links": {
+    "self": "https://api.dane.gov.pl/1.4/resources/63616,lista-nazw-domeny-govpl-z-usuga-www/data?page=1",
+    "last": "https://api.dane.gov.pl/1.4/resources/63616,lista-nazw-domeny-govpl-z-usuga-www/data?page=74",
+    "next": "https://api.dane.gov.pl/1.4/resources/63616,lista-nazw-domeny-govpl-z-usuga-www/data?page=2"
+  },
+  "meta": {
+    "params": {},
+    "count": 1461,
+    "data_schema": {
+      "fields": [
+        {
+          "name": "col1",
+          "type": "string",
+          "format": "default"
+        }
+      ],
+      "missingValues": []
+    },
+    "relative_uri": "/1.4/resources/63616,lista-nazw-domeny-govpl-z-usuga-www/data",
+    "headers_map": {
+      "col1": "2025-01-13 17:19:08 CET"
+    },
+    "aggregations": {},
+    "language": "en",
+    "path": "/1.4/resources/63616,lista-nazw-domeny-govpl-z-usuga-www/data",
+    "server_time": "2025-12-07T02:43:27Z"
+  },
+  "data": [
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/a82bd417-7073-5baf-807f-8542bad0c0d5"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 1
+      },
+      "attributes": {
+        "col1": {
+          "repr": "100sekund.gov.pl",
+          "val": "100sekund.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "a82bd417-7073-5baf-807f-8542bad0c0d5"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/481a88c0-b186-5928-9845-7136a547a6d1"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 2
+      },
+      "attributes": {
+        "col1": {
+          "repr": "100sekundwmuzeum.gov.pl",
+          "val": "100sekundwmuzeum.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "481a88c0-b186-5928-9845-7136a547a6d1"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/fe529131-780c-5c78-965e-0879e6720f98"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 3
+      },
+      "attributes": {
+        "col1": {
+          "repr": "15latwue.gov.pl",
+          "val": "15latwue.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "fe529131-780c-5c78-965e-0879e6720f98"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/700a09c4-318f-5be8-8b75-2a553808967a"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 4
+      },
+      "attributes": {
+        "col1": {
+          "repr": "15latwunii.gov.pl",
+          "val": "15latwunii.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "700a09c4-318f-5be8-8b75-2a553808967a"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/f1eaa483-0eb1-52b4-9af3-0da73874a2ac"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 5
+      },
+      "attributes": {
+        "col1": {
+          "repr": "1920.gov.pl",
+          "val": "1920.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "f1eaa483-0eb1-52b4-9af3-0da73874a2ac"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/23144ab5-c44d-56b5-b0ec-260cba168a38"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 6
+      },
+      "attributes": {
+        "col1": {
+          "repr": "20lat.gov.pl",
+          "val": "20lat.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "23144ab5-c44d-56b5-b0ec-260cba168a38"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/e18fb766-d4c7-5f44-aa70-55153c4a272e"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 7
+      },
+      "attributes": {
+        "col1": {
+          "repr": "20latwue.gov.pl",
+          "val": "20latwue.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "e18fb766-d4c7-5f44-aa70-55153c4a272e"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/34c6caee-aade-5d4e-8573-5d6b9f00a3dc"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 8
+      },
+      "attributes": {
+        "col1": {
+          "repr": "aan.gov.pl",
+          "val": "aan.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "34c6caee-aade-5d4e-8573-5d6b9f00a3dc"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/764ba702-308a-5874-ac25-d6fa3cfbe8a4"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 9
+      },
+      "attributes": {
+        "col1": {
+          "repr": "abm.gov.pl",
+          "val": "abm.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "764ba702-308a-5874-ac25-d6fa3cfbe8a4"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/ef7988c3-f9f0-561d-8cc3-6196711f98a4"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 10
+      },
+      "attributes": {
+        "col1": {
+          "repr": "abw.gov.pl",
+          "val": "abw.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "ef7988c3-f9f0-561d-8cc3-6196711f98a4"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/b9e1e8d5-afba-5bbc-9011-db4b5ed0faaf"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 11
+      },
+      "attributes": {
+        "col1": {
+          "repr": "ac.gov.pl",
+          "val": "ac.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "b9e1e8d5-afba-5bbc-9011-db4b5ed0faaf"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/92d706b9-93fb-54f5-9fa8-c1e0e9d18805"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 12
+      },
+      "attributes": {
+        "col1": {
+          "repr": "ade.gov.pl",
+          "val": "ade.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "92d706b9-93fb-54f5-9fa8-c1e0e9d18805"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/34c326dc-e998-5692-a171-8ed7850b2f15"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 13
+      },
+      "attributes": {
+        "col1": {
+          "repr": "afs.gov.pl",
+          "val": "afs.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "34c326dc-e998-5692-a171-8ed7850b2f15"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/20705167-fa32-55b6-9a3b-56adc25849b8"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 14
+      },
+      "attributes": {
+        "col1": {
+          "repr": "agad.gov.pl",
+          "val": "agad.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "20705167-fa32-55b6-9a3b-56adc25849b8"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/2dabfc53-1db3-5928-94ab-3d6882c4d291"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 15
+      },
+      "attributes": {
+        "col1": {
+          "repr": "aids.gov.pl",
+          "val": "aids.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "2dabfc53-1db3-5928-94ab-3d6882c4d291"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/22771b24-c000-5825-a43b-678ad91348d0"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 16
+      },
+      "attributes": {
+        "col1": {
+          "repr": "akademiacez.gov.pl",
+          "val": "akademiacez.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "22771b24-c000-5825-a43b-678ad91348d0"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/313bd026-5fc5-5cea-89bc-fa5ac1e3a499"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 17
+      },
+      "attributes": {
+        "col1": {
+          "repr": "akademiakopernikanska.gov.pl",
+          "val": "akademiakopernikanska.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "313bd026-5fc5-5cea-89bc-fa5ac1e3a499"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/bd1e57cd-32a4-594a-8ae3-3b0997dcb97b"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 18
+      },
+      "attributes": {
+        "col1": {
+          "repr": "ak.gov.pl",
+          "val": "ak.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "bd1e57cd-32a4-594a-8ae3-3b0997dcb97b"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/1f21aa60-0b06-5c4e-aa2c-d3dc3477f1ec"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 19
+      },
+      "attributes": {
+        "col1": {
+          "repr": "aktywnyrodzic.gov.pl",
+          "val": "aktywnyrodzic.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "1f21aa60-0b06-5c4e-aa2c-d3dc3477f1ec"
+    },
+    {
+      "links": {
+        "self": "https://api.dane.gov.pl/1.4/resources/63616/data/4e2dd4e8-28a4-5b62-aaad-25bea17a3898"
+      },
+      "relationships": {
+        "resource": {
+          "links": {
+            "related": "https://api.dane.gov.pl/1.4/resources/63616"
+          },
+          "data": {
+            "id": "63616",
+            "type": "resource"
+          }
+        }
+      },
+      "meta": {
+        "updated_at": "2025-01-14T18:48:03Z",
+        "row_no": 20
+      },
+      "attributes": {
+        "col1": {
+          "repr": "aleksandrowkuj.sr.gov.pl",
+          "val": "aleksandrowkuj.sr.gov.pl"
+        }
+      },
+      "type": "row",
+      "id": "4e2dd4e8-28a4-5b62-aaad-25bea17a3898"
+    }
+  ],
+  "jsonapi": {
+    "version": "1.0"
+  }
+}
